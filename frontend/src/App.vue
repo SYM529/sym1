@@ -1,25 +1,25 @@
 <template>
-  <LoginView v-if="!username" @authenticated="onAuthenticated" />
+  <!-- 未登录：显示登录页 -->
+  <LoginView v-if="!isLoggedIn" @authenticated="onAuthenticated" />
 
+  <!-- 已登录：显示对话界面 -->
   <div v-else class="container">
     <div class="header">
       <h1>Agent 智能助手</h1>
-      <div class="header-actions">
-        <span class="user-tag">👋 {{ username }}</span>
+      <div class="header-right">
+        <span class="username">👤 {{ username }}</span>
         <el-button size="small" @click="newSession">新会话</el-button>
-        <el-button size="small" @click="logout">退出登录</el-button>
+        <el-button size="small" type="danger" plain @click="logout">退出</el-button>
       </div>
     </div>
 
     <div class="chat-box" ref="chatBox">
-      <!-- 用户消息 -->
       <div v-for="(msg, idx) in messages" :key="idx" :class="['msg', msg.type]">
         <template v-if="msg.type === 'human'">
           <span class="label">👤 你</span>
           <span class="content">{{ msg.content }}</span>
         </template>
 
-        <!-- 工具调用折叠 -->
         <template v-else-if="msg.type === 'tool'">
           <div class="tool-block">
             <div class="tool-header" @click="toggleTool(idx)">
@@ -30,21 +30,12 @@
           </div>
         </template>
 
-        <!-- Agent 回答 -->
         <template v-else-if="msg.type === 'ai'">
-          <!-- 中间态：正在思考 -->
-          <template v-if="!msg.content">
-            <span class="label">🤖 Agent</span>
-            <span class="content thinking">正在思考...</span>
-          </template>
-          <!-- 最终回答 -->
-          <template v-else>
-            <span class="label">🤖 Agent</span>
-            <span class="content">{{ msg.content }}</span>
-          </template>
+          <span class="label">🤖 Agent</span>
+          <span v-if="msg.content" class="content">{{ msg.content }}</span>
+          <span v-else class="content thinking">正在思考...</span>
         </template>
 
-        <!-- 错误 -->
         <template v-else-if="msg.type === 'error'">
           <span class="label">❌ 错误</span>
           <span class="content">{{ msg.content }}</span>
@@ -67,19 +58,19 @@
 </template>
 
 <script setup>
-import { onMounted, ref, nextTick } from 'vue'
-import { getToken, setToken, fetchMe, clearSession, chatStream } from '@/api'
+import { ref, nextTick, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import LoginView from '@/components/LoginView.vue'
+import { getToken, setToken, fetchMe, clearSession, chatStream, ApiError } from '@/api'
 
+const isLoggedIn = ref(false)
+const username = ref('')
 const input = ref('')
 const messages = ref([])
 const loading = ref(false)
 const chatBox = ref(null)
 const sessionId = ref('session_' + Date.now())
-const expandedTools = ref({})   // 记录每个工具块是否展开
-const username = ref('')
-
-let abortController = null
+const expandedTools = ref({})
 
 function toggleTool(idx) {
   expandedTools.value[idx] = !expandedTools.value[idx]
@@ -92,57 +83,44 @@ async function scrollToBottom() {
   }
 }
 
-function resetConversation() {
+function onAuthenticated(name) {
+  username.value = name
+  isLoggedIn.value = true
+}
+
+async function tryRestoreSession() {
+  // 页面刷新后，尝试用已存的 token 恢复登录
+  if (!getToken()) return
+  try {
+    const me = await fetchMe()
+    username.value = me.username
+    isLoggedIn.value = true
+  } catch {
+    setToken(null)
+  }
+}
+
+function logout() {
+  setToken(null)
+  isLoggedIn.value = false
+  username.value = ''
   messages.value = []
   expandedTools.value = {}
   input.value = ''
   sessionId.value = 'session_' + Date.now()
 }
 
-function onAuthenticated(name) {
-  username.value = name
-  resetConversation()
-}
-
-function handleError(e) {
-  // token 失效时静默退回登录页
-  if (e.status === 401) {
-    username.value = ''
-    resetConversation()
-    return
-  }
-  messages.value.push({ type: 'error', content: String(e.message || e) })
-  scrollToBottom()
-}
-
-function logout() {
-  abortController?.abort()
-  setToken(null)
-  username.value = ''
-  resetConversation()
-}
-
-onMounted(async () => {
-  // 已有 token 时静默恢复登录态
-  if (!getToken()) return
-  try {
-    const me = await fetchMe()
-    username.value = me.username
-  } catch {
-    username.value = ''
-  }
-})
-
 async function newSession() {
-  abortController?.abort()
-  loading.value = false
   try {
     await clearSession(sessionId.value)
   } catch (e) {
-    handleError(e)
-    return
+    // 清空失败不阻塞，可能是会话本来就不存在
+    console.warn('清空会话失败', e)
   }
-  resetConversation()
+  messages.value = []
+  expandedTools.value = {}
+  input.value = ''
+  sessionId.value = 'session_' + Date.now()
 }
 
 async function send() {
@@ -151,30 +129,30 @@ async function send() {
 
   input.value = ''
   loading.value = true
-  messages.value.push({ type: 'human', content: text })
-  scrollToBottom()
-
-  abortController = new AbortController()
 
   try {
     await chatStream({
       message: text,
       sessionId: sessionId.value,
-      signal: abortController.signal,
       onEvent: (event) => {
-        // 用户消息已在本地渲染，跳过后端回传的同一条
-        if (event.type === 'human') return
         messages.value.push(event)
         scrollToBottom()
       },
     })
   } catch (e) {
-    if (e.name !== 'AbortError') handleError(e)
+    if (e instanceof ApiError && e.status === 401) {
+      ElMessage.error('登录已失效，请重新登录')
+      logout()
+    } else {
+      messages.value.push({ type: 'error', content: e.message || String(e) })
+      scrollToBottom()
+    }
   } finally {
     loading.value = false
-    abortController = null
   }
 }
+
+onMounted(tryRestoreSession)
 </script>
 
 <style scoped>
@@ -192,15 +170,16 @@ async function send() {
   margin-bottom: 16px;
 }
 
-.header-actions {
+.header-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.user-tag {
-  font-size: 13px;
-  color: #6b7280;
+.username {
+  font-size: 14px;
+  color: #4b5563;
+  margin-right: 4px;
 }
 
 h1 {
@@ -246,7 +225,6 @@ h1 {
   font-style: italic;
 }
 
-/* 工具折叠块 */
 .tool-block {
   width: 100%;
   border: 1px dashed #fbbf24;
