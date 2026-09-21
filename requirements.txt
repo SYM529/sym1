@@ -1,0 +1,23 @@
+# ---- Agent / LLM ----
+# langchain 1.x 才有 langchain.agents.create_agent，务必锁大版本
+langchain>=1.4,<2
+langchain-core>=1.6,<2
+langgraph>=1.2,<2
+langchain-openai>=1.6,<2
+python-dotenv>=1.0
+
+# ---- 联网搜索 ----
+tavily-python>=0.5
+
+# ---- Web 服务 ----
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9   # OAuth2PasswordRequestForm 解析 form-data 需要
+
+# ---- 存储 ----
+SQLAlchemy>=2.0
+redis>=5.0
+
+# ---- 认证 ----
+python-jose>=3.3
+bcrypt>=4.0
