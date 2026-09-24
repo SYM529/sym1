@@ -6,6 +6,20 @@ from datetime import datetime
 from langchain_core.tools import tool
 from tavily import TavilyClient
 
+# 时区必须是显式配置，不能依赖宿主机的系统时间：
+# 这个服务主要跑在 Docker 里，容器默认是 UTC，直接 datetime.now()
+# 会比北京时间慢 8 小时——"现在几点"是用户最容易核验对错的答案。
+TIMEZONE_NAME = os.getenv("TIMEZONE", "Asia/Shanghai")
+
+try:
+    from zoneinfo import ZoneInfo
+
+    _LOCAL_TZ = ZoneInfo(TIMEZONE_NAME)
+except Exception:
+    # tz 数据缺失（如精简镜像/未装 tzdata 的 Windows）时退回系统时间，
+    # 宁可可能差几个小时，也不要让工具直接报错
+    _LOCAL_TZ = None
+
 
 # ============ 安全数学求值：基于 AST 白名单，绝不使用 eval ============
 
@@ -26,7 +40,7 @@ _UNARY_OPS = {
 
 # 只暴露无副作用的纯数学函数
 _FUNCS = {
-    "abs": abs, "round": round, "min": min, "max": max,
+    "abs": abs, "round": round, "min": min, "max": max, "sum": sum,
     "sqrt": math.sqrt, "pow": math.pow, "log": math.log, "log10": math.log10,
     "exp": math.exp, "sin": math.sin, "cos": math.cos, "tan": math.tan,
     "floor": math.floor, "ceil": math.ceil, "factorial": math.factorial,
@@ -37,6 +51,28 @@ _CONSTS = {"pi": math.pi, "e": math.e, "tau": math.tau}
 _MAX_EXPR_LEN = 200
 _MAX_ABS_EXPONENT = 1000      # 拦住 9**9**9 这类算力炸弹
 _MAX_FACTORIAL = 1000
+_MAX_RANGE_LEN = 100_000      # 拦住 sum(range(1, 10**12)) 这类内存炸弹
+
+
+def _eval_range(node: ast.Call) -> list:
+    """求值 range(...)，供 sum(range(1, 101)) 这类求和表达式使用。
+
+    只接受整数参数，并限制序列长度——否则 sum(range(1, 10**12)) 会直接打满内存。
+    """
+    args = [_eval_node(a) for a in node.args]
+    if not 1 <= len(args) <= 3:
+        raise ValueError("range 只接受 1-3 个参数")
+
+    values = []
+    for a in args:
+        if not isinstance(a, int):
+            raise ValueError("range 参数必须是整数")
+        values.append(a)
+
+    # len(range(...)) 是 O(1) 计算，不会因区间超大而卡死
+    if len(range(*values)) > _MAX_RANGE_LEN:
+        raise ValueError(f"range 序列过长（上限 {_MAX_RANGE_LEN} 项）")
+    return list(range(*values))
 
 
 def _eval_node(node):
@@ -68,12 +104,22 @@ def _eval_node(node):
     if isinstance(node, ast.Call):
         if not isinstance(node.func, ast.Name):
             raise ValueError("只支持直接调用数学函数")
+        if node.keywords:
+            raise ValueError("不支持关键字参数")
+        # range 生成的是序列而非标量，单独走一路，供 sum/求和类表达式使用
+        if node.func.id == "range":
+            return _eval_range(node)
+
         func = _FUNCS.get(node.func.id)
         if func is None:
             raise ValueError(f"不允许调用函数: {node.func.id}")
         if node.keywords:
             raise ValueError("不支持关键字参数")
         args = [_eval_node(a) for a in node.args]
+        if func is sum:
+            for a in args:
+                if isinstance(a, list) and len(a) > _MAX_RANGE_LEN:
+                    raise ValueError("求和序列过长")
         if func is math.factorial:
             for a in args:
                 if not isinstance(a, int) or a < 0 or a > _MAX_FACTORIAL:
@@ -95,6 +141,10 @@ def calculate(expression: str) -> str:
         expr = expression.strip()
         if not expr:
             return "计算失败: 表达式为空"
+        # 用户和模型常把 ^ 当作乘方（Excel 与数学书写习惯），
+        # 而 Python 里 ^ 是按位异或。对面向自然语言的数学工具来说，
+        # 按乘方解释更符合直觉，否则「7 的 3 次方」写成 7^3 会直接报 BitXor 不支持。
+        expr = expr.replace("^", "**")
         if len(expr) > _MAX_EXPR_LEN:
             return f"计算失败: 表达式过长（上限 {_MAX_EXPR_LEN} 字符）"
 
@@ -116,7 +166,8 @@ def calculate(expression: str) -> str:
 @tool
 def get_current_time() -> str:
     """仅当用户明确询问'现在几点''当前时间''今天几号'时使用。不要用它推断天气或新闻等实时信息。"""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(_LOCAL_TZ) if _LOCAL_TZ else datetime.now()
+    return now.strftime("%Y-%m-%d %H:%M:%S")
 
 _tavily = None
 
