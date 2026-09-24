@@ -1,0 +1,21 @@
+# 统一换行符：仓库与工作区一律 LF。
+# 本项目的运行环境是 Linux 容器与 Linux CI，CRLF 会让 shell 脚本
+# 和 Docker 构建出问题；Windows 下的编辑器（VS Code 等）对 LF 完全友好。
+* text=auto eol=lf
+
+# Windows 专属脚本保留 CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制文件不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.db binary
