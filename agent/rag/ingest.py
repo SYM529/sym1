@@ -1,0 +1,55 @@
+"""知识库入库命令行工具。
+
+    python -m agent.rag.ingest                  # 增量入库 ./docs
+    python -m agent.rag.ingest ./my-docs        # 指定目录
+    python -m agent.rag.ingest --rebuild        # 先清空再入库
+    python -m agent.rag.ingest --stats          # 只看状态
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from agent.rag import get_store, ingest_directory  # noqa: E402
+from agent.rag.config import DOCS_DIR  # noqa: E402
+
+
+def main():
+    for stream in (getattr(sys, "stdout", None), getattr(sys, "stderr", None)):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+    parser = argparse.ArgumentParser(description="把文档灌入知识库")
+    parser.add_argument("directory", nargs="?", default=str(DOCS_DIR), help="文档目录")
+    parser.add_argument("--rebuild", action="store_true", help="清空后重建")
+    parser.add_argument("--stats", action="store_true", help="只查看当前状态")
+    args = parser.parse_args()
+
+    if args.stats:
+        store = get_store()
+        print(f"知识库 chunk 数：{store.count()}")
+        return
+
+    directory = Path(args.directory)
+    print(f"开始入库：{directory}（rebuild={args.rebuild}）")
+
+    stats = ingest_directory(directory, rebuild=args.rebuild)
+    if stats["documents"] == 0:
+        print(f"目录里没有可入库的文档（支持 .md/.txt/.pdf）：{directory}")
+        return
+
+    print(f"\n文档数：{stats['documents']}　新增 chunk：{stats['chunks']}　"
+          f"库内总数：{stats['total']}")
+    print("来源：")
+    for source in stats.get("sources", []):
+        print(f"  - {source}")
+
+
+if __name__ == "__main__":
+    main()
