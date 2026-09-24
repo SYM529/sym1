@@ -33,9 +33,10 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, password_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(user_id), "exp": expire}
+    # pv = 密码版本号：改密后旧 token 的 pv 与库中不一致，会被判失效
+    payload = {"sub": str(user_id), "exp": expire, "pv": int(password_version or 0)}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -56,5 +57,9 @@ def get_current_user(
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        raise credentials_exception
+
+    # 改过密码的账号，改密前签发的 token 一律作废
+    if int(payload.get("pv", 0)) != int(getattr(user, "password_version", 0) or 0):
         raise credentials_exception
     return user
