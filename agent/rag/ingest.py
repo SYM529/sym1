@@ -39,7 +39,12 @@ def main():
     directory = Path(args.directory)
     print(f"开始入库：{directory}（rebuild={args.rebuild}）")
 
-    stats = ingest_directory(directory, rebuild=args.rebuild)
+    try:
+        stats = ingest_directory(directory, rebuild=args.rebuild)
+    except FileNotFoundError as e:
+        # 目录路径写错是运维最常见的失误，给友好提示而不是甩 traceback
+        print(f"错误：{e}")
+        raise SystemExit(1)
     if stats["documents"] == 0:
         from agent.rag.loader import SUPPORTED_SUFFIXES
 
