@@ -9,6 +9,22 @@ python-dotenv>=1.0
 # ---- 联网搜索 ----
 tavily-python>=0.5
 
+# ---- MCP（把工具暴露成标准协议服务，供任意 MCP 客户端接入）----
+mcp>=1.0
+
+# ---- 评测与链路追踪 ----
+langsmith>=0.2
+
+# ---- RAG（知识库检索）----
+chromadb>=1.0          # 向量库
+rank-bm25>=0.2         # BM25 字面召回
+pypdf>=5.0             # PDF 解析
+jieba>=0.42            # 中文分词，提升 BM25 质量
+# Office 文档解析（可选：缺失时对应格式会给出明确的安装提示，其余格式不受影响）
+python-docx>=1.1       # .docx
+openpyxl>=3.1          # .xlsx
+python-pptx>=0.6       # .pptx
+
 # ---- Web 服务 ----
 fastapi>=0.115
 uvicorn[standard]>=0.30
@@ -21,3 +37,8 @@ redis>=5.0
 # ---- 认证 ----
 python-jose>=3.3
 bcrypt>=4.0
+
+# ---- 时区 ----
+# zoneinfo 在 Windows 上没有系统 tz 数据库，需要这个纯 Python 包补齐；
+# Linux 容器里也能保证 Asia/Shanghai 可用（slim 镜像不带 tzdata）
+tzdata>=2024.1

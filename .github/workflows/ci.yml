@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    name: 后端检查与单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: 语法检查
+        run: python -m compileall -q agent server evals tests
+
+      - name: 单元测试
+        # 单元测试只覆盖纯函数（AST 求值、分块、RRF、数据集校验），
+        # 不需要任何 API Key，因此 CI 里可以完整运行
+        run: python -m pytest -q
+
+  frontend:
+    name: 前端检查与构建
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 代码检查（不加 --fix，CI 中只检查不改写）
+        run: |
+          npx oxlint .
+          npx eslint . --cache
+
+      - name: 构建
+        run: npm run build
+
+  docker:
+    name: Docker 构建校验
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 准备 .env（compose 的 env_file 必需）
+        run: cp .env.example .env
+
+      - name: 校验 compose 配置
+        run: docker compose config --quiet
+
+      - name: 构建后端镜像
+        run: docker build -t agent-backend:ci .

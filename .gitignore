@@ -10,9 +10,21 @@ __pycache__/
 .venv/
 venv/
 
+# 测试与工具缓存
+.pytest_cache/
+.ruff_cache/
+.eslintcache
+
 # 数据库
 *.db
 *.sqlite3
+
+# 向量库（由文档重建，不入库）
+rag_store/
+uploads/
+
+# 求职材料含个人信息，不入库
+求职材料/
 
 # Node
 node_modules/

@@ -1,0 +1,32 @@
+.git
+.gitignore
+.idea
+.vscode
+
+# 密钥绝不进镜像，通过 env_file 注入
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 本地数据与产物
+agent.db
+agent.db-journal
+*.sqlite3
+*.log
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 评测产物（可选：想保留基线报告可从这里移除）
+evals/reports/
+
+Dockerfile
+docker-compose.yml
+README.md

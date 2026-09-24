@@ -1,0 +1,86 @@
+name: Eval Gate
+
+# 评测需要真实的模型与 Embedding 服务，成本与耗时都远高于普通 CI，
+# 因此不挂在每次 push 上，而是手动触发 + 每周定时跑一次。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "本次运行标记"
+        required: false
+        default: "ci-eval"
+      repeat:
+        description: "重复轮数（越大越能过滤采样波动）"
+        required: false
+        default: "2"
+  schedule:
+    # 每周一 02:00 UTC（北京时间 10:00）
+    - cron: "0 2 * * 1"
+
+jobs:
+  eval:
+    name: 评测与回归门禁
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 检查密钥是否已配置
+        run: |
+          if [ -z "${{ secrets.DEEPSEEK_API_KEY }}" ]; then
+            echo "::error::未配置 DEEPSEEK_API_KEY，请在仓库 Settings → Secrets 中配置后再运行"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SILICON_API_KEY }}" ]; then
+            echo "::error::未配置 SILICON_API_KEY（知识库需要 embedding 与 rerank）"
+            exit 1
+          fi
+
+      - name: 写入 .env
+        run: |
+          cat > .env <<EOF
+          DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_BASE_URL=${{ vars.DEEPSEEK_BASE_URL || 'https://api.deepseek.com' }}
+          TAVILY_API_KEY=${{ secrets.TAVILY_API_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          EMBEDDING_API_KEY=${{ secrets.SILICON_API_KEY }}
+          EMBEDDING_BASE_URL=${{ vars.EMBEDDING_BASE_URL || 'https://api.siliconflow.cn/v1' }}
+          LANGCHAIN_TRACING_V2=false
+          EOF
+
+      - name: 构建知识库
+        run: python -m agent.rag.ingest ./docs --rebuild
+
+      - name: 运行评测
+        run: |
+          python -m evals.run_eval \
+            --skip-network \
+            --concurrency 4 \
+            --repeat ${{ github.event.inputs.repeat || '2' }} \
+            --tag ${{ github.event.inputs.tag || 'ci-eval' }}
+
+      - name: 与基线对比（回归门禁）
+        # 逐条回归对采样波动过于敏感，这里用整体通过率跌幅作为门禁依据：
+        # 相比基线下降超过 5 个百分点即判定失败
+        run: |
+          python -m evals.compare \
+            evals/reports/ci_baseline.json \
+            evals/reports/latest.json \
+            --max-drop 0.05
+
+      - name: 上传评测报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.run_id }}
+          path: evals/reports/
+          retention-days: 30

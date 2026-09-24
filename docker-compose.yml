@@ -1,0 +1,55 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: agent-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: agent-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # 容器内通过服务名访问 Redis，覆盖 .env 里的 localhost
+      REDIS_URL: redis://redis:6379/0
+      # compose 暴露的前端端口是 8080
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
+      # 容器默认 UTC，"现在几点"和埋点的"今日"分桶都需要本地时区
+      TZ: Asia/Shanghai
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      # 用户表持久化，避免容器重建后账号丢失
+      - ./agent.db:/app/agent.db
+      # 上传文件与知识库也要持久化：否则容器重建之后，
+      # 上传的文件消失，文档问答会退化成"知识库里没有"
+      - ./uploads:/app/uploads
+      - ./rag_store:/app/rag_store
+      # 评测报告：宿主机新跑的评测，看板无需重建镜像即可看到
+      - ./evals/reports:/app/evals/reports
+
+  frontend:
+    build: ./frontend
+    container_name: agent-frontend
+    restart: unless-stopped
+    ports:
+      # 宿主机 8080 -> 容器 nginx 80，避免与 vite 的 5173 冲突
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  redis_data:
