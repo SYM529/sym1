@@ -1,0 +1,111 @@
+{
+  "tag": "smoke",
+  "model": "deepseek-chat",
+  "generated_at": "2026-09-21T11:26:01",
+  "summary": {
+    "total_cases": 3,
+    "passed_cases": 3,
+    "pass_rate": 1.0,
+    "answer_only_pass_rate": 1.0,
+    "tool_call_accuracy": 1.0,
+    "latency_sec": {
+      "mean": 1.415,
+      "p50": 1.239,
+      "p95": 1.787,
+      "max": 1.787
+    },
+    "tokens": {
+      "input_tokens": 3881,
+      "output_tokens": 237,
+      "total_tokens": 4118
+    },
+    "cost_cny": 0.009658,
+    "categories": {
+      "math_direct": {
+        "total": 3,
+        "passed": 3,
+        "pass_rate": 1.0
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "math_001",
+      "category": "math_direct",
+      "question": "帮我算一下 123 * 456 等于多少",
+      "turns": 1,
+      "answer": "123 × 456 = **56088**",
+      "called_tools": [
+        "calculate"
+      ],
+      "expect_tools": [
+        "calculate"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 56088.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['calculate']",
+      "passed": true,
+      "latency_sec": 1.239,
+      "tokens": {
+        "input_tokens": 1083,
+        "output_tokens": 48,
+        "total_tokens": 1131
+      },
+      "cost_cny": 0.00255,
+      "notes": "基础乘法，验证端到端工具链路"
+    },
+    {
+      "id": "math_002",
+      "category": "math_direct",
+      "question": "1024 减去 256 的差，再除以 8，结果是多少",
+      "turns": 1,
+      "answer": "结果是 **96**。\n\n计算过程：(1024 − 256) ÷ 8 = 768 ÷ 8 = 96",
+      "called_tools": [
+        "calculate"
+      ],
+      "expect_tools": [
+        "calculate"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 96.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['calculate']",
+      "passed": true,
+      "latency_sec": 1.22,
+      "tokens": {
+        "input_tokens": 1100,
+        "output_tokens": 71,
+        "total_tokens": 1171
+      },
+      "cost_cny": 0.002768,
+      "notes": "多运算符优先级"
+    },
+    {
+      "id": "math_003",
+      "category": "math_direct",
+      "question": "7 的阶乘是多少",
+      "turns": 1,
+      "answer": "7 的阶乘是 **5040**。\n\n（7! = 1×2×3×4×5×6×7 = 5040）",
+      "called_tools": [
+        "calculate"
+      ],
+      "expect_tools": [
+        "calculate"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 5040.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['calculate']",
+      "passed": true,
+      "latency_sec": 1.787,
+      "tokens": {
+        "input_tokens": 1698,
+        "output_tokens": 118,
+        "total_tokens": 1816
+      },
+      "cost_cny": 0.00434,
+      "notes": "验证 factorial 白名单"
+    }
+  ]
+}

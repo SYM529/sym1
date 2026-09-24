@@ -1,0 +1,471 @@
+{
+  "tag": "rag-v4",
+  "model": "deepseek-chat",
+  "repeat": 1,
+  "generated_at": "2026-09-21T14:24:33",
+  "summary": {
+    "total_cases": 15,
+    "passed_cases": 15,
+    "pass_rate": 1.0,
+    "answer_only_pass_rate": 1.0,
+    "tool_call_accuracy": 1.0,
+    "citation_accuracy": 1.0,
+    "citation_cases": 14,
+    "latency_sec": {
+      "mean": 2.725,
+      "p50": 2.4,
+      "p95": 3.987,
+      "max": 4.009
+    },
+    "tokens": {
+      "input_tokens": 32498,
+      "output_tokens": 2137,
+      "total_tokens": 34635
+    },
+    "cost_cny": 0.082092,
+    "categories": {
+      "rag_qa": {
+        "total": 15,
+        "passed": 15,
+        "pass_rate": 1.0
+      }
+    }
+  },
+  "results": [
+    {
+      "require_citation": true,
+      "id": "rag_001",
+      "category": "rag_qa",
+      "question": "会话历史在 Redis 里保存多久？",
+      "turns": 1,
+      "answer": "根据知识库资料，会话历史在 Redis 中的保存时长由**会话 TTL** 控制，取值为 **1800 秒**（即 30 分钟）[1]。\n\n补充一点相关说明：会话历史还有条数上限为 20 条，超过后会进行裁剪[1]。此外，如果 Redis 出现故障，服务不会崩溃，会话读写会退化为\"不读取、不保存历史\"，对话仍然可用[2]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 1800.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 3.987,
+      "tokens": {
+        "input_tokens": 2154,
+        "output_tokens": 157,
+        "total_tokens": 2311
+      },
+      "cost_cny": 0.005564,
+      "notes": "参数表召回，验证表格未被分块切散"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_002",
+      "category": "rag_qa",
+      "question": "知识库检索最终返回给模型的条数 top_k 默认是多少？",
+      "turns": 1,
+      "answer": "知识库检索最终返回给模型的条数 `top_k` 默认是 **4** [1]。\n\n根据配置表，`top_k` 默认值为 4，说明为“最终返回给模型的条数” [1]。另外，系统会先召回 `top_k × 3` 条候选再进行精排（候选倍数默认 3），低于最低相关分 0.05 的候选会被丢弃 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 4.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 4.009,
+      "tokens": {
+        "input_tokens": 2820,
+        "output_tokens": 189,
+        "total_tokens": 3009
+      },
+      "cost_cny": 0.007152,
+      "notes": "区分 web_search 的 3 条与知识库的 4 条"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_003",
+      "category": "rag_qa",
+      "question": "项目文档里提到，calculate 工具是基于什么方式实现的？",
+      "turns": 1,
+      "answer": "根据项目文档，`calculate` 工具是基于 **AST 白名单求值**的方式实现的，并明确**不使用 eval** [1]。\n\n此外文档还提到它的其他特性：支持四则运算、幂运算、常用数学函数（sqrt、log、sin、factorial 等）、常量 pi/e/tau，以及 `sum(range(...))` 形式的求和；为防止资源耗尽，限制了幂运算规模、阶乘上限，以及 range 序列长度不超过 100000 项 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "回答准确说明 calculate 基于 AST 白名单求值且明确不使用 eval，符合核心要求。",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 3.826,
+      "tokens": {
+        "input_tokens": 2074,
+        "output_tokens": 165,
+        "total_tokens": 2239
+      },
+      "cost_cny": 0.005468,
+      "notes": "曾表述为'是用 eval 实现的吗'，模型会当成询问系统内部实现的元问题而不检索知识库，改用文档查询式问法"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_004",
+      "category": "rag_qa",
+      "question": "JWT 密钥没有配置会怎么样？",
+      "turns": 1,
+      "answer": "根据知识库中的运维与部署文档，JWT 密钥未配置的后果如下：\n\n- `JWT_SECRET` 属于必填的环境变量，**未配置时服务会拒绝启动** [1]。\n- 这是刻意设计的安全约束：JWT 密钥缺失时直接拒绝启动，**不会使用可预测的默认值** [2]。\n\n也就是说，密钥没有配置不会导致服务以不安全的方式继续运行，而是启动阶段就直接失败。\n\n另外，资料中给出了生成密钥的方式 [1]：\n\n```bash\npython -c \"import secrets; print(secrets.token_urlsafe(32))\"\n```\n\n引用来源：\n[1] 运维与部署FAQ.md · 必填的环境变量\n[2] 运维与部署FAQ.md · 安全约束",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "回答准确指出未配置 JWT_SECRET 时服务会拒绝启动且不使用可预测默认值，符合评分标准。",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.395,
+      "tokens": {
+        "input_tokens": 2132,
+        "output_tokens": 219,
+        "total_tokens": 2351
+      },
+      "cost_cny": 0.006016,
+      "notes": "安全约束事实"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_005",
+      "category": "rag_qa",
+      "question": "分块时 chunk_size 默认是多少字符？",
+      "turns": 1,
+      "answer": "知识库中的资料显示，分块时 `chunk_size` 的默认值是 **500 字符**，它是\"分块目标长度\"[1]。\n\n另外，`chunk_overlap`（相邻块重叠长度）的默认值是 80 字符[1]。如果觉得分块过大或过小影响了召回效果，可以通过环境变量 `RAG_CHUNK_SIZE` 调整后重建对比[2]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 500.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.391,
+      "tokens": {
+        "input_tokens": 2283,
+        "output_tokens": 148,
+        "total_tokens": 2431
+      },
+      "cost_cny": 0.00575,
+      "notes": "RAG 配置参数"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_006",
+      "category": "rag_qa",
+      "question": "混合检索的两路结果是怎么融合的？",
+      "turns": 1,
+      "answer": "根据知识库中的资料：\n\n检索采用**混合检索**：Chroma 负责向量召回，BM25 负责字面召回，两路结果用 RRF（Reciprocal …）进行融合 [1]。\n\n需要说明的是，资料中关于 RRF 的具体内容在这里被截断了，只显示到「RRF（Reciprocal …」，因此**融合公式的完整细节（例如 RRF 的具体计算方式、k 值设定等）知识库中没有明确给出**，我无法进一步补充 [1]。\n\n另外，资料中还提到融合之后的后续流程：先召回 top_k × 3 条候选，再经过 cross-encoder 精排（BAAI/bge-reranker-v2-m3），并丢弃低于 0.05 最低相关分的候选，最终返回 top_k = 4 条给模型 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "包含关键词「RRF」",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.803,
+      "tokens": {
+        "input_tokens": 2455,
+        "output_tokens": 277,
+        "total_tokens": 2732
+      },
+      "cost_cny": 0.007126,
+      "notes": "专有名词召回，考察 BM25 字面匹配"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_007",
+      "category": "rag_qa",
+      "question": "rerank 用的是哪个模型？",
+      "turns": 1,
+      "answer": "根据知识库中的项目技术说明，rerank 使用的是 **BAAI/bge-reranker-v2-m3**，属于 cross-encoder 精排方式 [1]。\n\n补充一点相关资料中的上下文：该 rerank 模型与 embedding 模型（BAAI/bge-m3）一样，都是通过 SiliconFlow 的 OpenAI 兼容接口调用的 [1]；在环境变量配置上，rerank 与 embedding 共用 `EMBEDDING_API_KEY`（或 `SILICON_API_KEY`）[2]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "包含关键词「bge-reranker-v2-m3」",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.541,
+      "tokens": {
+        "input_tokens": 2258,
+        "output_tokens": 174,
+        "total_tokens": 2432
+      },
+      "cost_cny": 0.005908,
+      "notes": "模型名含连字符，考察字面召回"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_008",
+      "category": "rag_qa",
+      "question": "后端服务默认监听哪个端口？",
+      "turns": 1,
+      "answer": "根据项目技术说明，后端默认监听端口为 **8000**，即 uvicorn 默认监听端口 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 8000.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.126,
+      "tokens": {
+        "input_tokens": 2044,
+        "output_tokens": 74,
+        "total_tokens": 2118
+      },
+      "cost_cny": 0.00468,
+      "notes": "基础参数"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_009",
+      "category": "rag_qa",
+      "question": "评测数据集一共有多少条用例？",
+      "turns": 1,
+      "answer": "评测数据集位于 `evals/dataset.jsonl`，共 58 条用例，分为 8 个类别（单步计算、多步计算、时间查询、实时信息、无需工具、多轮对话、Prompt Injection、边界用例），其中 5 条需要联网检索 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 58.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.4,
+      "tokens": {
+        "input_tokens": 2068,
+        "output_tokens": 117,
+        "total_tokens": 2185
+      },
+      "cost_cny": 0.005072,
+      "notes": "跨文档事实（技术说明）"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_010",
+      "category": "rag_qa",
+      "question": "Redis 挂掉之后服务会崩溃吗？",
+      "turns": 1,
+      "answer": "根据知识库中的运维资料，Redis 挂掉后服务**不会崩溃**[1]。\n\n具体行为是：\n- 会话相关的读写会捕获 `RedisError` 并记录日志，退化为\"不读取、不保存历史\"，对话仍然可用[1]。\n- 健康检查接口 `GET /` 会返回 `redis` 字段，用来反映 Redis 的连通状态[1]。\n\n也就是说，Redis 故障只会影响会话历史的读取和保存，不影响服务本身的可用性[1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "回答准确说明服务不会崩溃、捕获RedisError并记录日志、退化为不读取不保存历史，且健康检查可反映Redis状态，符合评分标准。",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.916,
+      "tokens": {
+        "input_tokens": 1981,
+        "output_tokens": 174,
+        "total_tokens": 2155
+      },
+      "cost_cny": 0.005354,
+      "notes": "降级行为，考察语义召回"
+    },
+    {
+      "require_citation": false,
+      "id": "rag_011",
+      "category": "rag_qa",
+      "question": "知识库里有没有关于英伟达股价的内容？",
+      "turns": 1,
+      "answer": "知识库中没有检索到关于英伟达股价的相关资料。\n\n股价属于实时信息，知识库通常不会收录这类内容。如果你想了解英伟达当前的股价，我可以帮你联网搜索，需要的话请告诉我。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "如实说明知识库无相关内容，未编造股价数据，并提出可联网搜索，符合评分标准。",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "本用例不要求引用",
+      "passed": true,
+      "latency_sec": 2.435,
+      "tokens": {
+        "input_tokens": 1844,
+        "output_tokens": 95,
+        "total_tokens": 1939
+      },
+      "cost_cny": 0.004448,
+      "notes": "负样本：考察未命中时是否编造"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_012",
+      "category": "rag_qa",
+      "question": "range 序列长度上限是多少？",
+      "turns": 1,
+      "answer": "根据项目技术说明中的工具说明，`calculate` 为防资源耗尽，限制了 `range` 序列长度不超过 **100000 项** [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "回答准确指出 range 序列长度上限为 100000 项，并说明用于防止资源耗尽，符合评分标准。",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.394,
+      "tokens": {
+        "input_tokens": 2305,
+        "output_tokens": 98,
+        "total_tokens": 2403
+      },
+      "cost_cny": 0.005394,
+      "notes": "数值以中文或阿拉伯数字表述均可"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_013",
+      "category": "rag_qa",
+      "question": "PDF 文档入库时会保留什么标记？",
+      "turns": 1,
+      "answer": "根据知识库资料，PDF 文档入库时会按页提取文本，并保留**页码标记**[1]。\n\n资料来源：[1] 运维与部署FAQ.md · 如何重建知识库",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "包含关键词「页码」",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.321,
+      "tokens": {
+        "input_tokens": 1980,
+        "output_tokens": 85,
+        "total_tokens": 2065
+      },
+      "cost_cny": 0.00464,
+      "notes": "文档解析细节"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_014",
+      "category": "rag_qa",
+      "question": "前端开发服务器默认端口是多少？",
+      "turns": 1,
+      "answer": "前端开发服务器默认端口是 **5173**（vite dev server）；以容器方式部署时为 8080 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "命中期望值 5173.0",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.109,
+      "tokens": {
+        "input_tokens": 2052,
+        "output_tokens": 83,
+        "total_tokens": 2135
+      },
+      "cost_cny": 0.004768,
+      "notes": "区分 5173 与容器部署的 8080"
+    },
+    {
+      "require_citation": true,
+      "id": "rag_015",
+      "category": "rag_qa",
+      "question": "JWT token 的有效期是多久？",
+      "turns": 1,
+      "answer": "根据项目技术说明，JWT 的有效期是 **7 天**，由配置项 `ACCESS_TOKEN_EXPIRE_MINUTES` 控制 [1]。",
+      "called_tools": [
+        "search_knowledge_base"
+      ],
+      "expect_tools": [
+        "search_knowledge_base"
+      ],
+      "answer_pass": true,
+      "answer_reason": "包含关键词「7 天」",
+      "tool_pass": true,
+      "tool_reason": "调用了预期工具 ['search_knowledge_base']",
+      "citation_pass": true,
+      "citation_reason": "包含引用标注",
+      "passed": true,
+      "latency_sec": 2.225,
+      "tokens": {
+        "input_tokens": 2048,
+        "output_tokens": 82,
+        "total_tokens": 2130
+      },
+      "cost_cny": 0.004752,
+      "notes": "带单位的事实"
+    }
+  ]
+}

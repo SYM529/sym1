@@ -1,0 +1,104 @@
+{
+  "created_at": "2026-09-22T09:28:49",
+  "questions": 148,
+  "cacheable_questions": 132,
+  "distinct": {
+    "max_similarity": 0.8763,
+    "mean_similarity": 0.6679
+  },
+  "paraphrase": {
+    "min_similarity": 0.5978,
+    "mean_similarity": 0.8393,
+    "pairs": [
+      {
+        "a": "帮我算一下 123 乘以 456",
+        "b": "123 乘 456 等于多少？",
+        "score": 0.931,
+        "cacheable": true
+      },
+      {
+        "a": "1TB 等于多少 GB",
+        "b": "请问 1TB 是多少 GB",
+        "score": 0.9641,
+        "cacheable": true
+      },
+      {
+        "a": "现在几点了",
+        "b": "告诉我现在的时间",
+        "score": 0.8683,
+        "cacheable": false
+      },
+      {
+        "a": "今天几号",
+        "b": "今天的日期是多少",
+        "score": 0.9357,
+        "cacheable": false
+      },
+      {
+        "a": "什么是 ReAct",
+        "b": "给我解释一下 ReAct 是什么",
+        "score": 0.9279,
+        "cacheable": true
+      },
+      {
+        "a": "会话的 TTL 是多久",
+        "b": "聊天记录会保存多长时间",
+        "score": 0.6536,
+        "cacheable": true
+      },
+      {
+        "a": "后端服务监听哪个端口",
+        "b": "后端用的是什么端口",
+        "score": 0.8358,
+        "cacheable": true
+      },
+      {
+        "a": "知识库用的是什么 Embedding 模型",
+        "b": "向量化用的是哪个模型",
+        "score": 0.5978,
+        "cacheable": true
+      }
+    ]
+  },
+  "threshold_scan": [
+    {
+      "threshold": 0.8,
+      "false_hits": 6,
+      "paraphrases_covered": 4,
+      "paraphrase_coverage": 0.6667
+    },
+    {
+      "threshold": 0.85,
+      "false_hits": 2,
+      "paraphrases_covered": 3,
+      "paraphrase_coverage": 0.5
+    },
+    {
+      "threshold": 0.88,
+      "false_hits": 0,
+      "paraphrases_covered": 3,
+      "paraphrase_coverage": 0.5
+    },
+    {
+      "threshold": 0.9,
+      "false_hits": 0,
+      "paraphrases_covered": 3,
+      "paraphrase_coverage": 0.5
+    },
+    {
+      "threshold": 0.92,
+      "false_hits": 0,
+      "paraphrases_covered": 3,
+      "paraphrase_coverage": 0.5
+    },
+    {
+      "threshold": 0.95,
+      "false_hits": 0,
+      "paraphrases_covered": 1,
+      "paraphrase_coverage": 0.1667
+    }
+  ],
+  "recommended_threshold": 0.92,
+  "chosen_threshold": 0.92,
+  "false_hits_at_chosen": 0
+}

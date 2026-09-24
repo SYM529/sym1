@@ -1,0 +1,36 @@
+{"id":"ret_001","query":"会话历史在 Redis 里保存多久？","gold_keywords":["会话 TTL","1800"],"gold_source":"项目技术说明.md","notes":"参数表召回"}
+{"id":"ret_002","query":"后端服务默认监听哪个端口？","gold_keywords":["后端端口","8000"],"gold_source":"项目技术说明.md","notes":"参数表"}
+{"id":"ret_003","query":"前端开发服务器的端口是多少？","gold_keywords":["前端开发端口","5173"],"gold_source":"项目技术说明.md","notes":"区分 5173 与 8080"}
+{"id":"ret_004","query":"Agent 单次请求的超时时间是多少？","gold_keywords":["Agent 超时","60"],"gold_source":"项目技术说明.md","notes":"参数表"}
+{"id":"ret_005","query":"会话历史最多保留多少条？","gold_keywords":["历史条数上限","20"],"gold_source":"项目技术说明.md","notes":"参数表"}
+{"id":"ret_006","query":"JWT token 的有效期是多久？","gold_keywords":["JWT 有效期","7 天"],"gold_source":"项目技术说明.md","notes":"带单位数值"}
+{"id":"ret_007","query":"知识库检索 top_k 默认是多少？","gold_keywords":["top_k","4"],"gold_source":"项目技术说明.md","notes":"RAG 参数"}
+{"id":"ret_008","query":"分块时 chunk_size 默认多少字符？","gold_keywords":["chunk_size","500"],"gold_source":"项目技术说明.md","notes":"RAG 参数"}
+{"id":"ret_009","query":"相邻分块的重叠长度是多少？","gold_keywords":["chunk_overlap","80"],"gold_source":"项目技术说明.md","notes":"RAG 参数"}
+{"id":"ret_010","query":"候选先召回多少倍再精排？","gold_keywords":["候选倍数","3"],"gold_source":"项目技术说明.md","notes":"RAG 参数"}
+{"id":"ret_011","query":"rerank 低于多少分会被丢弃？","gold_keywords":["最低相关分","0.05"],"gold_source":"项目技术说明.md","notes":"阈值参数"}
+{"id":"ret_012","query":"embedding 用的是哪个模型？","gold_keywords":["Embedding 模型","bge-m3"],"gold_source":"项目技术说明.md","notes":"模型名含连字符"}
+{"id":"ret_013","query":"精排 rerank 用的是哪个模型？","gold_keywords":["Rerank 模型","bge-reranker-v2-m3"],"gold_source":"项目技术说明.md","notes":"字面匹配很关键"}
+{"id":"ret_014","query":"混合检索的两路结果如何融合？","gold_keywords":["RRF"],"gold_source":"项目技术说明.md","notes":"专有名词"}
+{"id":"ret_015","query":"calculate 工具是基于什么实现的？","gold_keywords":["AST 白名单","eval"],"gold_source":"项目技术说明.md","notes":"否定式事实所在段落"}
+{"id":"ret_016","query":"评测数据集覆盖了哪些类别？","gold_keywords":["单步计算","多轮对话"],"gold_source":"项目技术说明.md","notes":"原 gold 为用例条数，但条数会随版本变化导致用例过时，改为类别覆盖"}
+{"id":"ret_017","query":"如何一键启动整个项目？","gold_keywords":["docker compose up"],"gold_source":"运维与部署FAQ.md","notes":"命令字面匹配"}
+{"id":"ret_018","query":"JWT 密钥没有配置会怎样？","gold_keywords":["JWT_SECRET"],"gold_source":"运维与部署FAQ.md","notes":"环境变量名"}
+{"id":"ret_019","query":"Redis 挂掉之后服务会崩溃吗？","gold_keywords":["Redis 挂了"],"gold_source":"运维与部署FAQ.md","notes":"标题级语义"}
+{"id":"ret_020","query":"怎么重建知识库？","gold_keywords":["agent.rag.ingest"],"gold_source":"运维与部署FAQ.md","notes":"命令字面匹配"}
+{"id":"ret_021","query":"PDF 文档入库时保留什么标记？","gold_keywords":["页码"],"gold_source":"运维与部署FAQ.md","notes":"细节事实"}
+{"id":"ret_022","query":"range 序列长度上限是多少？","gold_keywords":["100000"],"gold_source":"项目技术说明.md","notes":"纯数字"}
+{"id":"ret_023","query":"评测的判定分成几个层次？","gold_keywords":["三层"],"gold_source":"项目技术说明.md","notes":"评测设计"}
+{"id":"ret_024","query":"用户的账号数据存放在哪个文件？","gold_keywords":["agent.db"],"gold_source":"项目技术说明.md","notes":"存储位置"}
+{"id":"ret_025","query":"知识库采用了什么检索方式？","gold_keywords":["混合检索"],"gold_source":"项目技术说明.md","notes":"检索策略"}
+{"id":"ret_026","query":"向量召回是用哪个库实现的？","gold_keywords":["Chroma"],"gold_source":"项目技术说明.md","notes":"组件名"}
+{"id":"ret_027","query":"前端是如何访问后端接口的？","gold_keywords":["代理","后端"],"gold_source":"项目技术说明.md","notes":"部署方式"}
+{"id":"ret_028","query":"没有配置 JWT_SECRET 会发生什么？","gold_keywords":["拒绝启动"],"gold_source":"运维与部署FAQ.md","notes":"安全约束"}
+{"id":"ret_029","query":"Redis 不可用时历史记录会怎样？","gold_keywords":["不保存历史"],"gold_source":"运维与部署FAQ.md","notes":"降级行为"}
+{"id":"ret_030","query":"评测结论应该关注哪个指标？","gold_keywords":["稳定通过率"],"gold_source":"项目技术说明.md","notes":"评测方法论"}
+{"id":"ret_031","query":"检索质量评测使用什么指标？","gold_keywords":["Recall"],"gold_source":"项目技术说明.md","notes":"指标名"}
+{"id":"ret_032","query":"重建知识库要加什么参数？","gold_keywords":["--rebuild"],"gold_source":"运维与部署FAQ.md","notes":"命令行参数"}
+{"id":"ret_033","query":"项目支持哪两套 Agent 架构？","gold_keywords":["react","graph"],"gold_source":"项目技术说明.md","notes":"两个词需在同一块中"}
+{"id":"ret_034","query":"多 Agent 图中分类之后是如何执行的？","gold_keywords":["并行"],"gold_source":"项目技术说明.md","notes":"执行模型"}
+{"id":"ret_035","query":"CORS 的来源限制是怎么配置的？","gold_keywords":["白名单"],"gold_source":"运维与部署FAQ.md","notes":"安全约束"}
+{"id":"ret_036","query":"知识库能解析哪些类型的文件？","gold_keywords":["pdf"],"gold_source":"运维与部署FAQ.md","notes":"支持格式"}

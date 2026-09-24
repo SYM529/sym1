@@ -1,0 +1,599 @@
+{
+  "tag": "retrieval-v1-faith",
+  "generated_at": "2026-09-21T14:51:30",
+  "summary": {
+    "total_cases": 22,
+    "fused_recall@1": 0.8636,
+    "precision@1": 0.8636,
+    "fused_recall@3": 1.0,
+    "precision@3": 0.3636,
+    "fused_recall@5": 1.0,
+    "precision@5": 0.2182,
+    "reranked_recall@1": 1.0,
+    "reranked_recall@3": 1.0,
+    "mrr": 0.9318,
+    "missed_cases": [],
+    "latency_mean_sec": 0.709
+  },
+  "faithfulness": {
+    "total_cases": 22,
+    "faithfulness": 1.0,
+    "failed_cases": []
+  },
+  "results": [
+    {
+      "id": "ret_001",
+      "query": "会话历史在 Redis 里保存多久？",
+      "found_rank_fused": 2,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 0,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 0.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 0.5,
+      "latency_sec": 1.509
+    },
+    {
+      "id": "ret_002",
+      "query": "后端服务默认监听哪个端口？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.566
+    },
+    {
+      "id": "ret_003",
+      "query": "前端开发服务器的端口是多少？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.555
+    },
+    {
+      "id": "ret_004",
+      "query": "Agent 单次请求的超时时间是多少？",
+      "found_rank_fused": 2,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 0,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 0.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 0.5,
+      "latency_sec": 0.565
+    },
+    {
+      "id": "ret_005",
+      "query": "会话历史最多保留多少条？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.657
+    },
+    {
+      "id": "ret_006",
+      "query": "JWT token 的有效期是多久？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.538
+    },
+    {
+      "id": "ret_007",
+      "query": "知识库检索 top_k 默认是多少？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.761
+    },
+    {
+      "id": "ret_008",
+      "query": "分块时 chunk_size 默认多少字符？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.57
+    },
+    {
+      "id": "ret_009",
+      "query": "相邻分块的重叠长度是多少？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.547
+    },
+    {
+      "id": "ret_010",
+      "query": "候选先召回多少倍再精排？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.536
+    },
+    {
+      "id": "ret_011",
+      "query": "rerank 低于多少分会被丢弃？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.6667,
+        "precision@5": 0.4
+      },
+      "rr": 1.0,
+      "latency_sec": 0.621
+    },
+    {
+      "id": "ret_012",
+      "query": "embedding 用的是哪个模型？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.617
+    },
+    {
+      "id": "ret_013",
+      "query": "精排 rerank 用的是哪个模型？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.609
+    },
+    {
+      "id": "ret_014",
+      "query": "混合检索的两路结果如何融合？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.555
+    },
+    {
+      "id": "ret_015",
+      "query": "calculate 工具是基于什么实现的？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.584
+    },
+    {
+      "id": "ret_016",
+      "query": "评测数据集一共有多少条用例？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 2.007
+    },
+    {
+      "id": "ret_017",
+      "query": "如何一键启动整个项目？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.773
+    },
+    {
+      "id": "ret_018",
+      "query": "JWT 密钥没有配置会怎样？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.553
+    },
+    {
+      "id": "ret_019",
+      "query": "Redis 挂掉之后服务会崩溃吗？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.598
+    },
+    {
+      "id": "ret_020",
+      "query": "怎么重建知识库？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.6667,
+        "precision@5": 0.4
+      },
+      "rr": 1.0,
+      "latency_sec": 0.729
+    },
+    {
+      "id": "ret_021",
+      "query": "PDF 文档入库时保留什么标记？",
+      "found_rank_fused": 1,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 1,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 1.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 1.0,
+      "latency_sec": 0.595
+    },
+    {
+      "id": "ret_022",
+      "query": "range 序列长度上限是多少？",
+      "found_rank_fused": 2,
+      "found_rank_reranked": 1,
+      "recall": {
+        "recall@1": 0,
+        "recall@3": 1,
+        "recall@5": 1
+      },
+      "precision": {
+        "precision@1": 0.0,
+        "precision@3": 0.3333,
+        "precision@5": 0.2
+      },
+      "rr": 0.5,
+      "latency_sec": 0.561
+    }
+  ],
+  "faithfulness_details": [
+    {
+      "id": "ret_001",
+      "query": "会话历史在 Redis 里保存多久？",
+      "hit": true,
+      "answer": "会话历史在 Redis 里保存 1800 秒（即会话 TTL 为 1800 秒）。",
+      "pass": true,
+      "reason": "回答中的1800秒会话TTL与资料[1]关键运行参数表中的取值完全一致。"
+    },
+    {
+      "id": "ret_002",
+      "query": "后端服务默认监听哪个端口？",
+      "hit": true,
+      "answer": "后端服务默认监听 8000 端口。",
+      "pass": true,
+      "reason": "回答中的端口 8000 与资料中“后端端口 8000”完全一致。"
+    },
+    {
+      "id": "ret_003",
+      "query": "前端开发服务器的端口是多少？",
+      "hit": true,
+      "answer": "前端开发服务器的端口是 5173。",
+      "pass": true,
+      "reason": "回答中的端口 5173 与资料中前端开发端口一致，有明确依据。"
+    },
+    {
+      "id": "ret_004",
+      "query": "Agent 单次请求的超时时间是多少？",
+      "hit": true,
+      "answer": "Agent 单次请求的超时时间是 60 秒。",
+      "pass": true,
+      "reason": "回答中的60秒与资料中Agent超时参数完全一致。"
+    },
+    {
+      "id": "ret_005",
+      "query": "会话历史最多保留多少条？",
+      "hit": true,
+      "answer": "会话历史最多保留 20 条。",
+      "pass": true,
+      "reason": "回答中的“20条”与资料中“历史条数上限 20”完全一致。"
+    },
+    {
+      "id": "ret_006",
+      "query": "JWT token 的有效期是多久？",
+      "hit": true,
+      "answer": "JWT token 的有效期是 7 天。",
+      "pass": true,
+      "reason": "回答中的7天有效期与资料中JWT有效期7天的记载一致。"
+    },
+    {
+      "id": "ret_007",
+      "query": "知识库检索 top_k 默认是多少？",
+      "hit": true,
+      "answer": "知识库检索 top_k 默认是 4。",
+      "pass": true,
+      "reason": "资料[1]的配置表中明确列出 top_k 默认值为 4，回答与资料一致。"
+    },
+    {
+      "id": "ret_008",
+      "query": "分块时 chunk_size 默认多少字符？",
+      "hit": true,
+      "answer": "分块时 chunk_size 默认 500 字符。",
+      "pass": true,
+      "reason": "回答中的 chunk_size 默认 500 字符与资料[1]配置表完全一致。"
+    },
+    {
+      "id": "ret_009",
+      "query": "相邻分块的重叠长度是多少？",
+      "hit": true,
+      "answer": "相邻分块的重叠长度是 80 字符。",
+      "pass": true,
+      "reason": "回答中的 80 字符与资料中 chunk_overlap 默认值一致。"
+    },
+    {
+      "id": "ret_010",
+      "query": "候选先召回多少倍再精排？",
+      "hit": true,
+      "answer": "候选先召回 top_k × 3 条再精排。",
+      "pass": true,
+      "reason": "回答与资料[1]中“候选倍数 3：先召回 top_k × 3 条再精排”完全一致。"
+    },
+    {
+      "id": "ret_011",
+      "query": "rerank 低于多少分会被丢弃？",
+      "hit": true,
+      "answer": "根据资料，低于最低相关分（默认 0.05）的候选会被丢弃。",
+      "pass": true,
+      "reason": "回答中的0.05最低相关分与资料[1]和[2]中的描述一致，无编造信息。"
+    },
+    {
+      "id": "ret_012",
+      "query": "embedding 用的是哪个模型？",
+      "hit": true,
+      "answer": "embedding 用的是 BAAI/bge-m3。",
+      "pass": true,
+      "reason": "回答中的 BAAI/bge-m3 与资料[1]中 Embedding 模型默认值完全一致。"
+    },
+    {
+      "id": "ret_013",
+      "query": "精排 rerank 用的是哪个模型？",
+      "hit": true,
+      "answer": "精排 rerank 用的是 **BAAI/bge-reranker-v2-m3**（cross-encoder 精排）。",
+      "pass": true,
+      "reason": "回答中的模型名称与说明均可在资料[1]的RAG配置表中找到依据。"
+    },
+    {
+      "id": "ret_014",
+      "query": "混合检索的两路结果如何融合？",
+      "hit": true,
+      "answer": "混合检索的两路结果用 RRF（Reciprocal …）融合。",
+      "pass": true,
+      "reason": "回答内容与资料中关于混合检索两路结果用 RRF 融合的表述一致，未添加资料外信息。"
+    },
+    {
+      "id": "ret_015",
+      "query": "calculate 工具是基于什么实现的？",
+      "hit": true,
+      "answer": "calculate 工具是基于 AST 白名单求值实现的，不使用 eval。",
+      "pass": true,
+      "reason": "回答中的事实陈述与资料[1]中'基于 AST 白名单求值，不使用 eval'完全一致。"
+    },
+    {
+      "id": "ret_016",
+      "query": "评测数据集一共有多少条用例？",
+      "hit": true,
+      "answer": "评测数据集一共有 58 条用例。",
+      "pass": true,
+      "reason": "回答中的58条用例与资料中'共58条'完全一致。"
+    },
+    {
+      "id": "ret_017",
+      "query": "如何一键启动整个项目？",
+      "hit": true,
+      "answer": "根据资料，一键启动整个项目的步骤如下：\n\n```bash\ncp .env.example .env\ndocker compose up --build\n```\n\n然后打开 `http://localhost:8080`。",
+      "pass": true,
+      "reason": "回答中的启动命令和访问地址均直接来自资料，无编造信息。"
+    },
+    {
+      "id": "ret_018",
+      "query": "JWT 密钥没有配置会怎样？",
+      "hit": true,
+      "answer": "JWT 密钥未配置时服务拒绝启动。",
+      "pass": true,
+      "reason": "回答与资料[1]中'JWT_SECRET：JWT 签名密钥，未配置时服务拒绝启动'完全一致。"
+    },
+    {
+      "id": "ret_019",
+      "query": "Redis 挂掉之后服务会崩溃吗？",
+      "hit": true,
+      "answer": "不会。",
+      "pass": true,
+      "reason": "资料明确说明服务不会崩溃，回答与之一致。"
+    },
+    {
+      "id": "ret_020",
+      "query": "怎么重建知识库？",
+      "hit": true,
+      "answer": "重建知识库的命令是：\n\n```bash\npython -m agent.rag.ingest ./docs --rebuild\npython -m agent.rag.ingest --stats\n```\n\n支持 `.md`、`.txt`、`.pdf` 三种格式。PDF 会按页提取文本并保留页码标记。文档内容相同时 doc_id 不变，重复入库不会产生重复 chunk。",
+      "pass": true,
+      "reason": "回答中的命令、支持格式、PDF处理方式及doc_id/chunk说明均与资料[1]完全一致，无编造信息。"
+    },
+    {
+      "id": "ret_021",
+      "query": "PDF 文档入库时保留什么标记？",
+      "hit": true,
+      "answer": "PDF 文档入库时会按页提取文本并保留页码标记。",
+      "pass": true,
+      "reason": "回答与资料中'PDF 会按页提取文本并保留页码标记'完全一致。"
+    },
+    {
+      "id": "ret_022",
+      "query": "range 序列长度上限是多少？",
+      "hit": true,
+      "answer": "range 序列长度不超过 100000 项。",
+      "pass": true,
+      "reason": "回答中的 range 序列长度上限 100000 项与资料[1]中工具说明完全一致。"
+    }
+  ]
+}
