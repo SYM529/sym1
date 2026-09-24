@@ -41,7 +41,11 @@ def main():
 
     stats = ingest_directory(directory, rebuild=args.rebuild)
     if stats["documents"] == 0:
-        print(f"目录里没有可入库的文档（支持 .md/.txt/.pdf）：{directory}")
+        from agent.rag.loader import SUPPORTED_SUFFIXES
+
+        print(
+            f"目录里没有可入库的文档（支持 {'/'.join(sorted(SUPPORTED_SUFFIXES))}）：{directory}"
+        )
         return
 
     print(f"\n文档数：{stats['documents']}　新增 chunk：{stats['chunks']}　"

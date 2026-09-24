@@ -666,10 +666,10 @@ python -m evals.run_eval --tag debug-run
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q      # 225 条
+python -m pytest -q      # 233 条
 ```
 
-覆盖十三组纯函数，**不需要任何 API Key**，因此 CI 中可以完整运行：
+覆盖十四组纯函数，**不需要任何 API Key**，因此 CI 中可以完整运行：
 
 | 测试文件 | 覆盖内容 |
 | --- | --- |
@@ -686,6 +686,8 @@ python -m pytest -q      # 225 条
 | `tests/test_knowledge.py` | 文档聚合视图、归属字段读取（跨块补齐）、共享与私有文档的区分 |
 | `tests/test_reports.py` | 报告归一化口径、别名文件不进趋势、损坏文件跳过而非 500 |
 | `tests/test_sessions.py` | 会话标题不漂移、过期条目清理、历史回放过滤工具过程与摘要 |
+| `tests/test_loader_formats.py` | CSV 转 Markdown 表格、HTML 去脚本、非法后缀拒绝、缺依赖提示 |
+| `tests/test_time_tool.py` | 时间工具的时区与格式边界 |
 
 `test_calculate.py` 的分量最重：它锁死了"数学求值绝不使用 eval"这条底线。
 历史上这个项目确实用过 `eval`，等于把 shell 暴露给 HTTP 接口。
