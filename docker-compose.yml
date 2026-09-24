@@ -3,8 +3,10 @@ services:
     image: redis:7-alpine
     container_name: agent-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # 公网部署时 redis 绝不能暴露宿主机端口——无密码的 Redis
+    # 是被扫描爆破（挂矿）的重灾区。前后端都走容器网络访问。
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -17,8 +19,10 @@ services:
     build: .
     container_name: agent-backend
     restart: unless-stopped
+    # 只绑定本机回环：外部流量一律经 frontend 的 nginx 反代 /api，
+    # 直连 8000 会绕过前端的体积限制与缓存层
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     environment:
@@ -46,8 +50,9 @@ services:
     container_name: agent-frontend
     restart: unless-stopped
     ports:
-      # 宿主机 8080 -> 容器 nginx 80，避免与 vite 的 5173 冲突
-      - "8080:80"
+      # 本地开发默认 8080（避开 vite 的 5173）；
+      # 云服务器上在 .env 设 FRONTEND_PORT=80 直接监听 80 端口
+      - "${FRONTEND_PORT:-8080}:80"
     depends_on:
       - backend
 

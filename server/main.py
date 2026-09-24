@@ -292,6 +292,11 @@ def save_history(user_id: int, session_id: str, messages: list):
 
 @app.post("/api/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    # 公网部署时建议 REGISTER_ENABLED=0：注册消耗的是你自己的 API 额度，
+    # 先在本地/服务器上建好账号，再关闭注册口。
+    if os.getenv("REGISTER_ENABLED", "1").lower() in ("0", "off", "false", "no"):
+        raise HTTPException(status_code=403, detail="当前未开放注册，请联系管理员开通账号")
+
     if db.query(User).filter(User.username == req.username).first():
         raise HTTPException(status_code=400, detail="用户名已存在")
     if len(req.password) < 6:
