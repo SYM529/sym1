@@ -38,3 +38,8 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# 内网穿透工具与日志（本机运行，不入库）
+cloudflared.exe
+cf_out.log
+cf_err.log
