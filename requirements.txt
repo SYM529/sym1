@@ -33,6 +33,10 @@ python-multipart>=0.0.9   # OAuth2PasswordRequestForm 解析 form-data 需要
 # ---- 存储 ----
 SQLAlchemy>=2.0
 redis>=5.0
+alembic>=1.13         # 数据库迁移（生产环境用 alembic upgrade head）
+
+# ---- 可观测性 ----
+prometheus-client>=0.20   # /metrics 指标暴露（缺失时指标能力自动降级）
 
 # ---- 认证 ----
 python-jose>=3.3

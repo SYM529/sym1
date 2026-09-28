@@ -1,0 +1,74 @@
+# Prometheus 告警规则示例
+# 用法：把本文件放到 Prometheus 的 rules 目录，并在 prometheus.yml 中
+#   rule_files:
+#     - "alerts.yml"
+#
+# 阈值是**起点**不是真理：上线后按实际基线（P95、日成本）再校准。
+
+groups:
+  - name: agent-service
+    rules:
+      # ---- 可用性 ----
+      - alert: ServiceDown
+        expr: up{job="agent"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent 服务不可达"
+          description: "up=0 持续 1 分钟，检查容器与 nginx。"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(agent_requests_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(agent_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx 错误率超过 5%"
+          description: "当前 5 分钟窗口内 5xx 占比 > 5%。"
+
+      # ---- 延迟 ----
+      - alert: SlowResponses
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, path) (rate(agent_request_duration_seconds_bucket[10m]))
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 延迟超过 30 秒"
+          description: "路径 {{ $labels.path }} 的 P95 为 {{ $value }}s，检查上游模型延迟。"
+
+      # ---- 成本（LLM 应用特有的关键告警）----
+      - alert: CostSpike
+        expr: increase(agent_cost_cny_total[1h]) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "1 小时成本超过 20 元"
+          description: "可能是被刷接口或缓存失效，检查 /api/usage 与限流配置。"
+
+      # ---- 容量 ----
+      - alert: FrequentRateLimiting
+        expr: increase(agent_rate_limited_total[10m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "10 分钟内被限流超过 50 次"
+          description: "要么是正常流量增长（考虑放宽额度），要么是有人在刷。"
+
+      # ---- 依赖 ----
+      - alert: RedisUnavailable
+        expr: absent(agent_requests_inflight) or agent_requests_inflight < 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "指标异常，可能 Redis 已不可用"
+          description: "服务依赖 Redis 做会话与限流，降级状态下多轮对话会失忆。"

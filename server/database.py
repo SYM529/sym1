@@ -26,7 +26,12 @@ class User(Base):
     password_version = Column(Integer, default=0, nullable=False, server_default="0")
 
 
-Base.metadata.create_all(bind=engine)
+# 生产环境请用 Alembic 管理 schema（DB_AUTO_CREATE=0）：
+#   alembic upgrade head        # 新库
+#   alembic stamp 0001          # 已存在的旧库标记为已迁移
+# 开发时保留自动建表，省去每次重建库都要跑迁移的麻烦。
+if os.getenv("DB_AUTO_CREATE", "1").lower() not in ("0", "off", "false", "no"):
+    Base.metadata.create_all(bind=engine)
 
 
 def _ensure_columns() -> None:

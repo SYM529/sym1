@@ -40,10 +40,16 @@ def create_access_token(user_id: int, password_version: int = 0) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
+    """注意：这里刻意声明为 async。
+
+    同步依赖会被 FastAPI 放进线程池执行，在那里修改 ContextVar
+    不会传回外层协程——访问日志就永远看不到 user 字段。
+    异步依赖在同一个 task 的上下文中执行，日志上下文才能真正穿透。
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="登录已失效，请重新登录",
@@ -62,4 +68,12 @@ def get_current_user(
     # 改过密码的账号，改密前签发的 token 一律作废
     if int(payload.get("pv", 0)) != int(getattr(user, "password_version", 0) or 0):
         raise credentials_exception
+
+    # 写入日志上下文：之后的日志能定位到具体账号（排查"某个用户反馈慢"时很关键）
+    try:
+        from server.logging_setup import request_user_var
+
+        request_user_var.set(user.username)
+    except Exception:  # pragma: no cover
+        pass
     return user

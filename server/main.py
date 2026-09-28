@@ -4,11 +4,12 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, field_validator
 from langchain_core.messages import (
@@ -24,6 +25,10 @@ from server import cache as cache_mod
 from server import memory, metrics, reports as reports_mod, sessions as sessions_mod
 from server import uploads
 from server.database import get_db, User
+from server.logging_setup import (
+    RequestContextMiddleware, current_request_id, request_user_var, setup_logging,
+)
+from server import prom
 from server.ratelimit import build_guard, build_limiter
 from server.uploads import current_user_id, resolve_uploaded
 
@@ -43,7 +48,14 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# 结构化日志必须在任何业务日志之前生效，否则早期日志没有 request_id
+setup_logging()
+
 app = FastAPI(title="Agent Service")
+
+# 请求上下文（request_id / 访问日志）。放在最外层，
+# 这样后面所有日志都能带上同一次请求的 ID
+app.add_middleware(RequestContextMiddleware)
 
 # 生产环境不要再用 "*"：带凭证时必须显式列出来源，否则浏览器会直接拒绝
 ALLOWED_ORIGINS = [
@@ -622,6 +634,11 @@ def enforce_rate_limit(current_user: User = Depends(get_current_user)) -> User:
     result = limiter.check(str(current_user.id))
     if not result.allowed:
         retry = max(1, int(result.retry_after))
+        prom.record_rate_limited()
+        logger.warning(
+            "触发限流（user=%s，%ss 后可重试）", current_user.username, retry,
+            extra={"event": "rate_limited", "retry_after": retry},
+        )
         raise HTTPException(
             status_code=429,
             detail=f"请求过于频繁，请 {retry} 秒后重试",
@@ -638,6 +655,37 @@ def root():
     except redis.RedisError:
         redis_ok = False
     return {"status": "ok", "redis": redis_ok}
+
+
+def metrics_guard(current_user: User = Depends(get_current_user)) -> User:
+    """指标端点守卫：默认只允许管理员。
+
+    指标里含请求量、成本、错误率等运营数据，
+    公网裸奔等于把内部数据公开；内网可信环境可设 METRICS_PUBLIC=1 关闭。
+    """
+    if not bool(getattr(current_user, "is_admin", False)):
+        raise HTTPException(status_code=403, detail="仅管理员可查看指标")
+    return current_user
+
+
+def _no_auth() -> None:
+    return None
+
+
+# 依赖在导入期确定：公开模式直接换成一个空依赖，
+# 避免在运行期反复判断环境变量
+_metrics_dep = (
+    _no_auth
+    if os.getenv("METRICS_PUBLIC", "0").lower() in ("1", "true", "yes")
+    else metrics_guard
+)
+
+
+@app.get("/metrics")
+def metrics_endpoint(_guard=Depends(_metrics_dep)):
+    """Prometheus 抓取端点。"""
+    body, content_type = prom.render()
+    return Response(content=body, media_type=content_type)
 
 
 @app.get("/api/usage")
@@ -679,6 +727,13 @@ async def agent_stream(
         # 让 Agent 的工具能确认"当前请求属于谁"。
         # ContextVar 按 task 隔离，并发请求之间不会互相串扰。
         current_user_id.set(user_id)
+        prom.inc_inflight()
+        timer = prom.Timer()
+        logger.info(
+            "开始处理对话（session=%s，历史 %d 条，带图=%s）",
+            req.session_id, len(history), has_image,
+            extra={"event": "agent_start", "session_id": req.session_id},
+        )
 
         collected = []      # 本轮产生的全部消息，用于写回会话历史
         last_ai = None      # 最后一条 AI 消息，用于提取最终答案
@@ -715,6 +770,7 @@ async def agent_stream(
                         metrics.record_usage(
                             r, user_id, empty_usage, 0.0, cached=True
                         )
+                        prom.record_cache_hit()
                         # 命中也要写回历史，否则下一轮的上下文会少一问一答
                         save_history(
                             user_id, req.session_id,
@@ -787,6 +843,12 @@ async def agent_stream(
                     "cost_cny": round(cost, 6), "cached": False,
                 })
                 metrics.record_usage(r, user_id, usage, cost, cached=False)
+                # Prometheus 侧同步记一份：用户维度看 /api/usage，
+                # 全局趋势与告警看 /metrics
+                prom.record_tokens(
+                    usage.get("input_tokens", 0), usage.get("output_tokens", 0)
+                )
+                prom.record_cost(cost)
 
                 # ---- 写入语义缓存 ----
                 # 只缓存"不会过期"的答案：用过实时工具或带图片的一律不缓存，
@@ -819,15 +881,39 @@ async def agent_stream(
             yield "data: [DONE]\n\n"
 
         except asyncio.TimeoutError:
+            prom.record_error("timeout")
+            logger.warning(
+                "Agent 请求超时（>%ss，user=%s，session=%s）",
+                budget, user_id, req.session_id,
+                extra={"event": "agent_timeout", "budget": budget},
+            )
             err = {"type": "error", "content": f"请求超时（>{budget}秒），请重试"}
             yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
         except Exception as e:
+            prom.record_error("exception")
+            logger.exception(
+                "Agent 请求异常（user=%s，session=%s）：%s",
+                user_id, req.session_id, e,
+                extra={"event": "agent_error"},
+            )
             err = {"type": "error", "content": f"服务异常: {str(e)}"}
             yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
         finally:
             # 必须释放：生成器被取消（客户端断开）时也要归还名额，
             # 否则并发名额会被慢慢泄漏，服务逐渐拒掉所有请求。
             guard.release()
+            prom.dec_inflight()
+            # 流式接口的总耗时（含模型与工具时间），是延迟告警的主指标
+            elapsed = time.perf_counter() - timer.start
+            prom.observe_request("/api/agent/stream", 200, elapsed)
+            logger.info(
+                "对话处理结束（耗时 %.2fs，session=%s）", elapsed, req.session_id,
+                extra={
+                    "event": "agent_finish",
+                    "duration_s": round(elapsed, 2),
+                    "session_id": req.session_id,
+                },
+            )
 
     # 并发闸门：拿不到名额立刻失败，不让请求排队堆积（排队比拒绝更伤）
     if not await guard.acquire_nowait():
