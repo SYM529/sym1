@@ -7,10 +7,15 @@
 from logging.config import fileConfig
 import os
 
+# 必须在导入 server.database **之前**关掉自动建表：
+# 否则 create_all 会先把表建好，紧接着的 alembic upgrade 再建一次就会冲突。
+# 迁移期间，schema 的所有权归 Alembic。
+os.environ["DB_AUTO_CREATE"] = "0"
+
 from alembic import context
 from sqlalchemy import create_engine
 
-from server.database import Base  # noqa: F401  （导入以注册所有模型）
+from server.database import Base  # noqa: E402,F401  （导入以注册所有模型）
 
 
 config = context.config

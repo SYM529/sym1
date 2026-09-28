@@ -25,6 +25,9 @@ COPY evals/ ./evals/
 # 示例文档一并进镜像：否则在容器内执行
 # `python -m agent.rag.ingest ./docs` 会因目录不存在而失败
 COPY docs/ ./docs/
+# 数据库迁移：生产环境用 `alembic upgrade head` 管理 schema
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 COPY main.py ./
 
 ENV PYTHONUNBUFFERED=1 \

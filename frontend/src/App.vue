@@ -348,6 +348,19 @@
         <span class="pf-row-value">{{ isDark ? '深色' : '浅色' }}</span>
       </div>
 
+      <div class="pf-section-title">操作记录</div>
+      <div v-if="profileAudit.length === 0" class="pf-empty">
+        暂无记录。登录、改密、删除文档等操作会出现在这里。
+      </div>
+      <div v-for="log in profileAudit" :key="log.id" class="pf-audit">
+        <span class="pf-audit-action">{{ actionLabel(log.action) }}</span>
+        <span class="pf-audit-target">{{ log.target || '-' }}</span>
+        <span :class="['pf-audit-outcome', log.outcome === 'success' ? 'ok' : 'fail']">
+          {{ log.outcome === 'success' ? '成功' : '失败' }}
+        </span>
+        <span class="pf-audit-time">{{ log.ts?.slice(5, 16).replace('T', ' ') }}</span>
+      </div>
+
       <div class="pf-section-title">账号操作</div>
       <div class="pf-actions">
         <el-button size="small" @click="showPasswordForm = !showPasswordForm">
@@ -396,7 +409,8 @@ import SessionSidebar from '@/components/SessionSidebar.vue'
 import {
   getToken, setToken, fetchMe, clearSession, chatStream, uploadFile,
   listKnowledge, deleteKnowledge, fetchKnowledgeContent, listSessions, fetchSession,
-  renameSession as renameSessionApi, fetchUsage, changePassword, clearAllSessions, ApiError,
+  renameSession as renameSessionApi, fetchUsage, changePassword, clearAllSessions,
+  fetchAudit, ApiError,
 } from '@/api'
 import { renderMarkdownWithCites } from '@/markdown'
 
@@ -442,6 +456,7 @@ const profileLoading = ref(false)
 const profileMe = ref({})
 const profileUsage = ref({})
 const profileDocs = ref([])
+const profileAudit = ref([])
 const showPasswordForm = ref(false)
 const pwdForm = reactive({ old: '', next: '' })
 const pwdSaving = ref(false)
@@ -863,14 +878,16 @@ async function openProfile() {
   pwdForm.next = ''
   try {
     // 账号信息、用量与我的文档并行取；会话数直接用侧边栏已加载的列表
-    const [me, usage, docs] = await Promise.all([
+    const [me, usage, docs, auditRes] = await Promise.all([
       fetchMe(),
       fetchUsage(),
       listKnowledge({ mine: true, page: 1, pageSize: 50 }),
+      fetchAudit(20),
     ])
     profileMe.value = me
     profileUsage.value = usage
     profileDocs.value = docs.documents ?? []
+    profileAudit.value = auditRes.records ?? []
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
       ElMessage.error('登录已失效，请重新登录')
@@ -963,6 +980,22 @@ async function removeProfileDoc(doc) {
       ElMessage.error(e.message || '删除失败')
     }
   }
+}
+
+// 审计动作翻译成中文：审计表存的是枚举常量，展示层负责可读性
+const ACTION_LABELS = {
+  login: '登录',
+  login_failed: '登录失败',
+  register: '注册',
+  change_password: '修改密码',
+  delete_document: '删除文档',
+  clear_session: '删除会话',
+  clear_all_sessions: '清空会话',
+  upload: '上传文件',
+}
+
+function actionLabel(action) {
+  return ACTION_LABELS[action] || action
 }
 
 function formatTokens(usage) {
@@ -1597,6 +1630,42 @@ html.dark .hljs-name {
   font-size: 12px;
   color: var(--text-3);
   line-height: 1.5;
+}
+
+/* 操作记录 */
+.pf-audit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: var(--panel-bg-2);
+  border: 1px solid var(--border-1);
+  font-size: 12px;
+}
+.pf-audit-action {
+  color: var(--text-1);
+  font-weight: 600;
+  flex: none;
+}
+.pf-audit-target {
+  color: var(--text-3);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-audit-outcome.ok {
+  color: #67c23a;
+}
+.pf-audit-outcome.fail {
+  color: #f56c6c;
+}
+.pf-audit-time {
+  color: var(--text-3);
+  flex: none;
 }
 
 h1 {

@@ -718,12 +718,23 @@ python -m evals.run_eval --tag debug-run
 
 ```bash
 alembic upgrade head     # 新库：一步建出完整 schema
-alembic stamp 0001       # 已有旧库：标记为已迁移（不必重建数据）
+alembic stamp head       # 已有旧库：标记为已迁移（不必重建数据）
 alembic downgrade base   # 回滚
 ```
 
 `DB_AUTO_CREATE=0` 时关闭代码自动建表，schema 完全交给迁移管理——
 `server/database.py` 里那些启动期 `ALTER TABLE` 补丁退化为历史库的兼容兜底。
+
+### 审计日志
+
+删除文档、清空会话、修改密码、登录（含失败）这些**不可逆或敏感**操作
+都会写入 `audit_logs` 表（Alembic 迁移 0002），同时输出结构化日志。
+
+- `GET /api/audit`：默认查**自己的**记录；`all_users=true` 需管理员
+  （排查"这个文档是谁删的"）
+- 两条铁律：**审计写失败绝不能影响业务**（降级为 warning）；
+  **detail 不记录密码/token** 等敏感内容，只记录结果与影响
+- 登录失败也审计——连续失败是最直接的暴力破解信号
 
 ## 工程化：测试与 CI
 

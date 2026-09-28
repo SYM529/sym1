@@ -113,6 +113,10 @@ export function clearAllSessions() {
   return request('/sessions', { method: 'DELETE' })
 }
 
+export function fetchAudit(limit = 30) {
+  return request(`/audit?limit=${limit}`)
+}
+
 export function fetchReports() {
   return request('/reports')
 }

@@ -22,6 +22,7 @@ from agent.rag import delete_document as rag_delete_document
 from agent.rag import get_document_chunks as rag_get_document_chunks
 from agent.rag import list_documents as rag_list_documents
 from agent.service import MODEL_NAME, agent, capability_signature
+from server import audit
 from server import cache as cache_mod
 from server import memory, metrics, reports as reports_mod, sessions as sessions_mod
 from server import uploads
@@ -330,6 +331,10 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    audit.record(
+        audit.REGISTER, actor=req.username, target=req.username,
+        request_id=current_request_id(),
+    )
     return {"id": user.id, "username": user.username}
 
 
@@ -340,8 +345,16 @@ def login(
 ):
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
+        # 登录失败也要审计：连续失败是最直接的暴力破解信号
+        audit.record(
+            audit.LOGIN_FAILED, actor=form_data.username, outcome="failure",
+            detail="用户名或密码错误", request_id=current_request_id(),
+        )
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
+    audit.record(
+        audit.LOGIN, actor=user.username, request_id=current_request_id()
+    )
     token = create_access_token(user.id, getattr(user, "password_version", 0) or 0)
     return {
         "access_token": token,
@@ -396,6 +409,10 @@ def change_password(
     current_user.hashed_password = hash_password(req.new_password)
     current_user.password_version = int(current_user.password_version or 0) + 1
     db.commit()
+    audit.record(
+        audit.CHANGE_PASSWORD, actor=current_user.username,
+        detail="旧 token 已全部失效", request_id=current_request_id(),
+    )
 
     token = create_access_token(current_user.id, current_user.password_version)
     logger.info("用户 %s 修改了密码", current_user.username)
@@ -419,6 +436,10 @@ def clear_all_sessions(current_user: User = Depends(get_current_user)):
     except redis.RedisError as e:
         logger.warning("Redis 不可用，会话未清除: %s", e)
         raise HTTPException(status_code=503, detail="会话服务暂不可用")
+    audit.record(
+        audit.CLEAR_ALL_SESSIONS, actor=current_user.username,
+        target=f"{len(ids)} 个会话", request_id=current_request_id(),
+    )
     return {"status": "cleared", "count": len(ids)}
 
 
@@ -564,6 +585,12 @@ def delete_knowledge(
         except Exception as e:
             logger.warning("删除源文件失败：%s", e)
 
+    audit.record(
+        audit.DELETE_DOCUMENT, actor=current_user.username,
+        target=f"{target.get('source') or doc_id}（{removed} 段）",
+        detail="共享文档" if not owner else "本人文档",
+        request_id=current_request_id(),
+    )
     return {"status": "deleted", "doc_id": doc_id, "chunks": removed}
 
 
@@ -631,7 +658,19 @@ async def upload(
         except Exception as e:
             logger.warning("文档入库失败：%s", e)
             result["knowledge"] = {"ingested": False, "error": str(e)}
+            audit.record(
+                audit.UPLOAD, actor=current_user.username,
+                target=info["filename"], outcome="failure", detail=str(e),
+                request_id=current_request_id(),
+            )
 
+    if info["kind"] == uploads.KIND_DOCUMENT:
+        audit.record(
+            audit.UPLOAD, actor=current_user.username, target=info["filename"],
+            detail=f"{result['knowledge'].get('chunks', 0)} 段入库"
+            if result.get("knowledge", {}).get("ingested") else "入库失败",
+            request_id=current_request_id(),
+        )
     return result
 
 
@@ -691,6 +730,24 @@ _metrics_dep = (
     if os.getenv("METRICS_PUBLIC", "0").lower() in ("1", "true", "yes")
     else metrics_guard
 )
+
+
+@app.get("/api/audit")
+def read_audit(
+    limit: int = 50,
+    all_users: bool = False,
+    current_user: User = Depends(get_current_user),
+):
+    """审计记录查询。
+
+    - 默认只返回**自己的**操作记录
+    - `all_users=true` 需要管理员：用于排查"这个文档是谁删的"
+    """
+    if all_users and not bool(getattr(current_user, "is_admin", False)):
+        raise HTTPException(status_code=403, detail="仅管理员可查看全部审计记录")
+
+    actor = None if all_users else current_user.username
+    return {"records": audit.recent(actor=actor, limit=limit)}
 
 
 @app.get("/metrics")
@@ -1021,4 +1078,8 @@ def clear_session(
     except redis.RedisError as e:
         logger.warning("Redis 不可用，会话未清除: %s", e)
         raise HTTPException(status_code=503, detail="会话服务暂不可用")
+    audit.record(
+        audit.CLEAR_SESSION, actor=current_user.username, target=session_id,
+        request_id=current_request_id(),
+    )
     return {"status": "cleared", "session_id": session_id}
