@@ -81,6 +81,9 @@ if _AVAILABLE:
     CACHE_HITS = Counter("agent_cache_hits_total", "语义缓存命中次数")
     ERRORS = Counter("agent_errors_total", "错误计数", ["kind"])
     RATE_LIMITED = Counter("agent_rate_limited_total", "被限流拒绝的次数")
+    # 熔断器状态：0=closed 1=half_open 2=open
+    CIRCUIT_STATE = Gauge("agent_circuit_state", "熔断器状态", ["name"])
+    RETRIES = Counter("agent_retries_total", "上游调用重试次数", ["target"])
 
 
 def observe_request(path: str, status: int, duration_s: float) -> None:
@@ -126,6 +129,19 @@ def record_error(kind: str) -> None:
 def record_rate_limited() -> None:
     if _AVAILABLE:
         RATE_LIMITED.inc()
+
+
+_STATE_VALUES = {"closed": 0, "half_open": 1, "open": 2}
+
+
+def set_circuit_state(name: str, state: str) -> None:
+    if _AVAILABLE:
+        CIRCUIT_STATE.labels(name=name).set(_STATE_VALUES.get(state, -1))
+
+
+def record_retry(target: str) -> None:
+    if _AVAILABLE:
+        RETRIES.labels(target=target).inc()
 
 
 def render() -> tuple[bytes, str]:

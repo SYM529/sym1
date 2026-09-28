@@ -17,6 +17,7 @@ from langchain_core.messages import (
 )
 from sqlalchemy.orm import Session
 from agent.pricing import estimate_cost, sum_usage
+from agent import resilience
 from agent.rag import delete_document as rag_delete_document
 from agent.rag import get_document_chunks as rag_get_document_chunks
 from agent.rag import list_documents as rag_list_documents
@@ -95,6 +96,17 @@ SESSION_TTL = int(SESSION_TTL_HOURS * 3600)
 # 限流与并发控制。计数集中在 Redis，Redis 不可用时自动降级为进程内计数。
 limiter = build_limiter(r)
 guard = build_guard()
+
+# 上游（模型服务商）熔断器：连续失败达到阈值就快速失败，冷却后再探活
+provider_breaker = resilience.get_breaker(
+    "llm_provider",
+    failure_threshold=int(os.getenv("CIRCUIT_FAILURE_THRESHOLD", "5")),
+    reset_timeout=float(os.getenv("CIRCUIT_RESET_SECONDS", "60")),
+)
+# 状态变化同步到 Prometheus，便于在 Grafana 上看到"什么时候熔断了"
+provider_breaker.set_on_change(
+    lambda name, state: prom.set_circuit_state(name, state)
+)
 
 # 把"file_id -> 文件路径"的解析能力交给 Agent 的图片工具。
 # 归属校验在 uploads 内部完成：工具接收到的是模型给的参数，不可信，
@@ -727,6 +739,22 @@ async def agent_stream(
         # 让 Agent 的工具能确认"当前请求属于谁"。
         # ContextVar 按 task 隔离，并发请求之间不会互相串扰。
         current_user_id.set(user_id)
+        # ---- 熔断检查 ----
+        # 上游持续故障时快速失败：否则每个请求都要硬等 90s 超时，
+        # 并发名额被占满，本来的"部分失败"会变成"整体不可用"。
+        if not provider_breaker.allow():
+            prom.record_error("circuit_open")
+            logger.error(
+                "上游熔断中，快速失败（session=%s）", req.session_id,
+                extra={"event": "circuit_open_reject"},
+            )
+            yield _sse({
+                "type": "error",
+                "content": "上游模型暂时不可用（已熔断），请稍后再试。",
+            })
+            yield "data: [DONE]\n\n"
+            return
+
         prom.inc_inflight()
         timer = prom.Timer()
         logger.info(
@@ -737,6 +765,7 @@ async def agent_stream(
 
         collected = []      # 本轮产生的全部消息，用于写回会话历史
         last_ai = None      # 最后一条 AI 消息，用于提取最终答案
+        errored = False     # 本轮是否出错（决定要不要把熔断器恢复为闭合）
         signature = capability_signature()
 
         try:
@@ -881,7 +910,9 @@ async def agent_stream(
             yield "data: [DONE]\n\n"
 
         except asyncio.TimeoutError:
+            errored = True
             prom.record_error("timeout")
+            provider_breaker.record_failure()
             logger.warning(
                 "Agent 请求超时（>%ss，user=%s，session=%s）",
                 budget, user_id, req.session_id,
@@ -890,7 +921,12 @@ async def agent_stream(
             err = {"type": "error", "content": f"请求超时（>{budget}秒），请重试"}
             yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
         except Exception as e:
+            errored = True
             prom.record_error("exception")
+            # 只有"上游类"故障才计入熔断：
+            # 用户参数错误、内容被拒这类确定性失败不该让整条链路熔断
+            if resilience.is_transient(e):
+                provider_breaker.record_failure()
             logger.exception(
                 "Agent 请求异常（user=%s，session=%s）：%s",
                 user_id, req.session_id, e,
@@ -903,6 +939,10 @@ async def agent_stream(
             # 否则并发名额会被慢慢泄漏，服务逐渐拒掉所有请求。
             guard.release()
             prom.dec_inflight()
+            # 走到这里说明本轮没有抛异常（超时/异常分支已被上面捕获），
+            # 视为上游健康，用于把熔断器从半开恢复为闭合
+            if not errored:
+                provider_breaker.record_success()
             # 流式接口的总耗时（含模型与工具时间），是延迟告警的主指标
             elapsed = time.perf_counter() - timer.start
             prom.observe_request("/api/agent/stream", 200, elapsed)

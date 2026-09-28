@@ -660,13 +660,78 @@ python -m evals.run_eval --tag debug-run
 2. **看板组件异步加载。** echarts 体积不小，不该让每个打开聊天页的人一起下载：
    用 `defineAsyncComponent` 拆成独立 chunk，点开看板时才加载。
 
+## 可观测性与韧性
+
+### 结构化日志（request_id 全链路）
+
+```json
+{"ts":"2026-09-28T08:51:59","level":"INFO","logger":"access",
+ "msg":"GET /api/me -> 200","request_id":"e0a2255e42dd","user":"demo",
+ "event":"http_request","method":"GET","path":"/api/me","status":200,
+ "duration_ms":12.74}
+```
+
+- 每条日志带 `request_id`（响应同时回 `X-Request-ID` 头），可串联同一次请求
+- 外部传入的 ID 做格式校验，防止日志注入
+- 用**裸 ASGI 中间件**而非 `BaseHTTPMiddleware`：后者会包装响应流，
+  对 SSE 这类长连接存在缓冲风险
+- `LOG_FORMAT=text` 可切回易读文本（本地开发）
+
+> 一个真实的坑：`get_current_user` 原本是同步依赖，FastAPI 会把它放进
+> **线程池**执行——在那里修改 ContextVar 不会传回外层协程，访问日志的
+> `user` 永远是 `-`。改成 `async def` 后上下文才真正穿透。
+
+### Prometheus 指标（`GET /metrics`，默认仅管理员）
+
+| 指标 | 类型 | 说明 |
+| --- | --- | --- |
+| `agent_requests_total{path,status}` | Counter | 请求量与错误率 |
+| `agent_request_duration_seconds{path}` | Histogram | 延迟分布（P95 告警依据） |
+| `agent_tokens_total{direction}` | Counter | token 消耗 |
+| `agent_cost_cny_total` | Counter | 成本累计 |
+| `agent_cache_hits_total` | Counter | 语义缓存命中 |
+| `agent_errors_total{kind}` | Counter | 错误分类（timeout / exception / circuit_open） |
+| `agent_rate_limited_total` | Counter | 限流拒绝次数 |
+| `agent_circuit_state{name}` | Gauge | 熔断器状态（0 闭合 / 1 半开 / 2 熔断） |
+
+**路径 label 做了归一化**：`/api/session/42` → `/api/session/{id}`。
+不归一化的话每个会话都是一条独立时间序列，会把 Prometheus 打爆。
+`prometheus_client` 缺失时全部降级为空操作——监控是旁路设施，不能拖垮服务。
+
+配套告警规则见 `ops/prometheus/alerts.yml`（服务不可用 / 5xx 率 / P95 延迟 /
+**成本突增** / 限流频繁 / Redis 异常）。
+
+### 熔断与重试
+
+| 机制 | 对付什么 | 配置 |
+| --- | --- | --- |
+| **重试**（指数退避 + 抖动） | 偶发抖动（网络闪断、429） | 视觉模型调用重试 1 次 |
+| **熔断**（三态） | 持续故障（服务商整体不可用） | `CIRCUIT_FAILURE_THRESHOLD=5`、`CIRCUIT_RESET_SECONDS=60` |
+
+- 只有**瞬时错误**才重试/计入熔断：401、内容策略拒绝这类确定性错误
+  重试一百次也没用，只会放大延迟与成本
+- 抖动（jitter）是必需的：否则一批同时失败的请求会在同一刻一起重试，
+  形成新的尖峰
+- 熔断后**不是永久拒绝**：冷却期结束放一个探活请求，成功即闭合
+
+### 数据库迁移（Alembic）
+
+```bash
+alembic upgrade head     # 新库：一步建出完整 schema
+alembic stamp 0001       # 已有旧库：标记为已迁移（不必重建数据）
+alembic downgrade base   # 回滚
+```
+
+`DB_AUTO_CREATE=0` 时关闭代码自动建表，schema 完全交给迁移管理——
+`server/database.py` 里那些启动期 `ALTER TABLE` 补丁退化为历史库的兼容兜底。
+
 ## 工程化：测试与 CI
 
 ### 单元测试
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q      # 233 条
+python -m pytest -q      # 268 条
 ```
 
 覆盖十四组纯函数，**不需要任何 API Key**，因此 CI 中可以完整运行：
@@ -688,6 +753,9 @@ python -m pytest -q      # 233 条
 | `tests/test_sessions.py` | 会话标题不漂移、过期条目清理、历史回放过滤工具过程与摘要 |
 | `tests/test_loader_formats.py` | CSV 转 Markdown 表格、HTML 去脚本、非法后缀拒绝、缺依赖提示 |
 | `tests/test_time_tool.py` | 时间工具的时区与格式边界 |
+| `tests/test_observability.py` | JSON 日志含 request_id、ID 格式校验防注入、路径 label 归一化 |
+| `tests/test_migrations.py` | Alembic 能从零建出完整 schema 且可回滚 |
+| `tests/test_resilience.py` | 熔断三态迁移、重试次数、确定性错误不重试 |
 
 `test_calculate.py` 的分量最重：它锁死了"数学求值绝不使用 eval"这条底线。
 历史上这个项目确实用过 `eval`，等于把 shell 暴露给 HTTP 接口。

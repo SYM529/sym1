@@ -88,6 +88,9 @@ def get_vision_model():
     return _vision_model
 
 
+from agent.resilience import retry_call  # noqa: E402  （放在加载完 .env 之后）
+
+
 def _mime_of(path) -> str:
     mime, _ = mimetypes.guess_type(path.name)
     return mime or "image/png"
@@ -134,7 +137,11 @@ async def analyze_image(file_id: str, question: str) -> str:
     try:
         path = _file_resolver(file_id)
         message = _build_multimodal_message(path, question)
-        response = await get_vision_model().ainvoke([message])
+        # 视觉调用是整条链路里最慢也最容易抖动的一段（实测 2s~22s），
+        # 对瞬时失败重试一次即可；确定性错误（如图片格式不对）不重试
+        response = await retry_call(
+            get_vision_model().ainvoke, [message], attempts=2, base_delay=0.8
+        )
     except Exception as e:
         # 与其它工具保持一致：把失败原因返回给模型，让它自己降级处理，
         # 而不是让整条 Agent 链路崩掉。
