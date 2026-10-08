@@ -25,6 +25,8 @@ uploads/
 
 # 求职材料含个人信息，不入库
 求职材料/
+*-简历-*.docx
+*简历*.docx
 
 # Node
 node_modules/
