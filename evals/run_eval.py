@@ -33,8 +33,9 @@ for _stream in (getattr(sys, "stdout", None), getattr(sys, "stderr", None)):
 load_dotenv()  # 必须在导入读取环境变量的模块之前
 
 from langchain_core.messages import AIMessage, HumanMessage  # noqa: E402
-from langchain_openai import ChatOpenAI  # noqa: E402
+from langchain_openai import ChatOpenAI  # noqa: E402  # pylint: disable=unused-import
 
+from agent.llm import get_model  # noqa: E402
 from agent.pricing import estimate_cost, sum_usage  # noqa: E402
 from agent.service import agent, MODEL_NAME  # noqa: E402
 from evals.dataset import DATASET_PATH, load_dataset  # noqa: E402,F401
@@ -77,15 +78,16 @@ _judge_llm = None
 
 
 def get_judge_llm():
-    """评测判定用的模型，temperature=0 保证评分可复现。"""
+    """评测判定用的模型，temperature=0 保证评分可复现。
+
+    必须与主模型走同一套 LLM_* 配置（agent.llm.get_model）：之前这里写死
+    DEEPSEEK_BASE_URL + 全局 MODEL_NAME，服务商切到硅基流动后模型名与端点
+    不匹配，judge 全量 400。get_model 还统一处理了混合推理模型的
+    enable_thinking 关闭，避免 <think> 混进评分输出。
+    """
     global _judge_llm
     if _judge_llm is None:
-        _judge_llm = ChatOpenAI(
-            model=MODEL_NAME,
-            base_url=os.getenv("DEEPSEEK_BASE_URL"),
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            temperature=0,
-        )
+        _judge_llm = get_model()
     return _judge_llm
 
 
