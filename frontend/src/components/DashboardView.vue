@@ -293,6 +293,23 @@ function render(key, el, option) {
   instances[key] = chart
 }
 
+// 筛选后无数据的空状态：必须显式重绘，否则旧图残留会让人误以为筛选没生效
+function renderEmpty(key, el, text) {
+  if (!el) return
+  instances[key]?.dispose()
+  const chart = echarts.init(el, props.dark ? 'dark' : undefined)
+  chart.setOption({
+    backgroundColor: 'transparent',
+    title: {
+      text,
+      left: 'center',
+      top: 'middle',
+      textStyle: { color: '#9ca3af', fontSize: 13, fontWeight: 'normal' },
+    },
+  })
+  instances[key] = chart
+}
+
 function xLabels(reports) {
   // 同一天跑多次时 tag 可能重复，时间才能区分先后
   return reports.map((r) => (r.generated_at || '').slice(5, 16).replace('T', ' '))
@@ -362,6 +379,10 @@ function renderAll() {
   if (trend.length) {
     renderTrend(trend)
     renderLatency(trend)
+  } else {
+    // 空结果也要重绘：静默保留旧图 = 筛选看起来失效
+    renderEmpty('trend', trendChart.value, '该时间范围内没有评测记录（最近一次全量评测在此范围之外）')
+    renderEmpty('latency', latencyChart.value, '该时间范围内没有评测记录')
   }
   if (data.value?.latest) renderCategories(data.value.latest)
 }
