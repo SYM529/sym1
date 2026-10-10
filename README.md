@@ -79,8 +79,6 @@ docker compose up -d          # 首次或更换依赖时加 --build
 
 ### 方式三：本地开发
 
-### 方式二：本地开发
-
 需要 Python ≥ 3.11（用到 `asyncio.timeout`）。
 
 ```bash
@@ -294,12 +292,9 @@ python -m evals.retrieval_eval --faithfulness  # 追加忠实度
 
 #### 方式一：界面上传（单份、随手传）
 
-入口在**聊天输入框**，不在知识库面板里：
-
-1. 点击输入框左侧的 **📎 附件**（支持直接把文件拖入，或截图后 `Ctrl + V` 粘贴）
-2. 选择文档 —— 支持 15 种格式，上限 20MB（见下表）
-3. 上传后提示**"文档已入库 N 个片段"**，立刻就能问里面的内容
-4. 再打开 📚 知识库面板，该文件标记为**"我上传的"**——只有你能删
+入口在聊天输入框左侧的 **📎 附件**（支持拖入文件或截图后 `Ctrl + V` 粘贴），
+不在知识库面板里：支持 15 种格式、上限 20MB（见下表），上传后即刻可问内容；
+文件在知识库面板标记为"我上传的"——只有你能删。
 
 | 类别 | 格式 | 解析方式 |
 | --- | --- | --- |
@@ -391,16 +386,6 @@ docker exec agent-backend python -m agent.rag.ingest ./docs --rebuild  # 清空�
    而不是要求"重建之后必须重启服务"。
 3. **镜像里没有 `docs/`。** 容器里执行重建会因为目录不存在而失败。
    已在 Dockerfile 里补上 `COPY docs/ ./docs/`。
-
-### 验证结果
-
-| 场景 | 结果 |
-| --- | --- |
-| 上传图片 + 看图 + 计算 | `analyze_image` 识别 4 个色块正确，`calculate` 算出 20 元 |
-| 上传文档 | 自动入库 5 个片段，引用来源为原始文件名 |
-| 文档问答（不传 file_id） | 检索命中 4 段，答案带 `[1][2]` 引用并可核验 |
-| 重复上传同一文档 | chunk 数不变（幂等），来源名被纠正 |
-| 非支持类型 / 超大文件 | 返回明确的 400 提示 |
 
 ## MCP：工具的标准化复用
 
@@ -662,14 +647,9 @@ python -m evals.compare evals/reports/baseline-v1.json evals/reports/final-v1.js
 
 ### LangSmith 链路追踪
 
-每次评测都会给 trace 打上 `eval`、`{tag}`、`{category}` 标签，可直接在 LangSmith 里筛选回放，
+配置 `LANGCHAIN_TRACING_V2=true` 与 `LANGCHAIN_API_KEY` 后，评测会给每条 trace 打上
+`eval` / `{tag}` / `{category}` 标签，可在 LangSmith 里筛选回放，
 定位失败发生在规划、工具还是生成阶段。
-
-```bash
-export LANGCHAIN_TRACING_V2=true
-export LANGCHAIN_API_KEY=<your-key>
-python -m evals.run_eval --tag debug-run
-```
 
 ## 评测可视化看板
 
@@ -686,14 +666,6 @@ python -m evals.run_eval --tag debug-run
 | 分类通过率 | 横向条形图，未满分的项目用警示色——"哪里还有缺口"一眼可见 |
 | 检索质量 | 融合排序 vs 精排后的 Recall@1 并排展示，两行的差值就是 cross-encoder 的直接收益 |
 | 缓存标定 | 选定阈值、评测集上的误命中数、不同问题的最大相似度 |
-
-两个值得说明的实现细节：
-
-1. **别名文件不进趋势。** `latest.json` / `ci_baseline.json` 是其它报告的拷贝，
-   混进趋势线会把同一个数据点画两次，"改进了多少"就看不出来了。
-   趋势只用真实运行产生的报告，但"最新指标"卡片优先读 `latest.json`。
-2. **看板组件异步加载。** echarts 体积不小，不该让每个打开聊天页的人一起下载：
-   用 `defineAsyncComponent` 拆成独立 chunk，点开看板时才加载。
 
 ## 可观测性与韧性
 
@@ -859,8 +831,7 @@ python -m evals.compare evals/reports/ci_baseline.json \
 
 **会话**：Redis key 为 `session:{user_id}:{session_id}`，TTL 默认 7 天
 （`SESSION_TTL_HOURS` 可配），按用户隔离。
-保存完整 human / ai / tool 序列并保留 `tool_calls`，多轮对话才能延续工具上下文；
-裁剪时保证 tool 消息不脱离其 AI 消息，并丢弃尾部悬空的 `tool_calls`。
+保存完整 human / ai / tool 序列并保留 `tool_calls`，多轮对话才能延续工具上下文。
 
 **会话侧边栏**：Redis 无法"列出某用户有哪些 key"（KEYS/SCAN 是全库操作），
 所以用一个显式索引（`sessions:{user_id}` 哈希）驱动侧边栏。
@@ -879,9 +850,6 @@ python -m evals.compare evals/reports/ci_baseline.json \
 **流式去重**：LangGraph `values` 模式会重复推送同一条消息，后端按内容去重后再下发，前端跳过重复的 human 事件。
 
 **优雅降级**：Redis 异常时记录日志并继续服务，而不是让请求 500。
-
-**评测可信度**：`--repeat 3` 输出平均通过率、波动区间、稳定通过率与抖动用例清单。
-单轮数字会把采样噪声误读成优化效果，对比时应看稳定通过率。
 
 ## 已知局限
 
