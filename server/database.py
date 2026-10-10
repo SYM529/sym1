@@ -8,10 +8,23 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # 库地址与 alembic/env.py 一致地读取环境变量：
-# 生产/测试可以指向其它库，也避免两处配置漂移
+# 生产/测试可以指向其它库，也避免两处配置漂移。
+# 本地开发用 MySQL 8（见 .env 的 DATABASE_URL），未配置时回落 SQLite
+# （单测与迁移测试依赖临时 SQLite 文件，保持无外部依赖可跑）。
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./agent.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+_is_sqlite = DATABASE_URL.startswith("sqlite")
+
+engine = create_engine(
+    DATABASE_URL,
+    # check_same_thread 是 SQLite 专用参数（FastAPI 的线程池会换线程访问连接），
+    # 传给 MySQL 驱动会直接报错，因此按方言条件化
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    # MySQL 的 wait_timeout 会掐掉空闲连接（默认 8h），
+    # "放了一晚上再请求就报 gone away"靠 pre_ping 剔除断连 + 定期回收兜底
+    pool_pre_ping=True,
+    pool_recycle=3600,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
@@ -28,20 +41,22 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ts = Column(DateTime, default=datetime.now, index=True)
-    actor = Column(String, index=True)          # 操作者用户名
-    action = Column(String, index=True)         # login / delete_doc / change_password ...
-    target = Column(String)                     # 操作对象（文件名、会话 id 等）
-    outcome = Column(String, default="success") # success / failure
-    detail = Column(String)                     # 补充说明（禁止写密码等敏感信息）
-    request_id = Column(String)                 # 串联同一次请求的日志
+    # String 必须给长度：SQLite 忽略长度，但 MySQL 的 VARCHAR 不给长度无法建表
+    actor = Column(String(64), index=True)          # 操作者用户名
+    action = Column(String(32), index=True)         # login / delete_doc / change_password ...
+    target = Column(String(255))                    # 操作对象（文件名、会话 id 等）
+    outcome = Column(String(16), default="success") # success / failure
+    detail = Column(String(500))                    # 补充说明（禁止写密码等敏感信息）
+    request_id = Column(String(64))                 # 串联同一次请求的日志
 
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    username = Column(String(64), unique=True, index=True, nullable=False)
+    # bcrypt 哈希固定 60 字符，255 留足换算法的余量
+    hashed_password = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     # 管理员：评测看板等管理功能只对这类用户开放
     is_admin = Column(Boolean, default=False, nullable=False, server_default="0")
@@ -72,7 +87,19 @@ def _ensure_columns() -> None:
     }
     try:
         with engine.begin() as conn:
-            cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)"))]
+            if engine.dialect.name == "sqlite":
+                cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)"))]
+            else:
+                # MySQL 等：information_schema 是标准做法，DATABASE() 即当前库
+                cols = [
+                    row[0]
+                    for row in conn.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema = DATABASE() AND table_name = 'users'"
+                        )
+                    )
+                ]
             if not cols:  # 表不存在：交给迁移
                 return
             for name, definition in additions.items():

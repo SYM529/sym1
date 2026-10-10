@@ -14,7 +14,7 @@ agent/          Agent 与工具定义（create_agent + 4 个工具，数学求�
   mcp_server.py MCP 服务：把 4 个工具暴露成标准协议，供任意 MCP 客户端接入
   vision.py    图片理解：视觉模型封装 + analyze_image 工具
   pricing.py   token 计量与成本估算（评测与线上共用同一份定义）
-server/         FastAPI：JWT 认证、SSE 流式对话、Redis 会话、SQLite 用户表
+server/         FastAPI：JWT 认证、SSE 流式对话、Redis 会话、MySQL 用户与审计表
   ratelimit.py  限流与并发控制（Redis 滑动窗口，Redis 挂了退化为进程内计数）
   memory.py     长上下文管理：超预算时把早期对话压缩成摘要
   uploads.py    上传文件管控：类型与大小限制、按用户隔离、路径穿越防护
@@ -56,11 +56,28 @@ docker compose up -d          # 首次或更换依赖时加 --build
 | 改了前端代码 | `docker compose up -d --build frontend` |
 | 改了 `.env`（无需重新构建） | `docker compose restart backend` |
 | 停止整套服务 | `docker compose down` |
-| 查看服务状态 | `docker ps`（前两个容器应显示 `healthy`） |
+| 查看服务状态 | `docker ps`（`agent-redis` 与 `agent-mysql` 应显示 `healthy`） |
 
 > `-d` 表示后台运行；去掉则前台查看日志，调试时用得上。
 >
-> Windows 上挂载 SQLite 需要先在宿主机创建空文件：`New-Item agent.db -ItemType File`
+> MySQL 由 compose 的 `mysql` 服务提供（数据卷 `mysql_data` 持久化，字符集 utf8mb4），
+> 密码来自 `.env` 的 `MYSQL_ROOT_PASSWORD`，首次启动自动建库建表。
+
+### 方式二：云服务器部署（腾讯云轻量，已在公网运行）
+
+本项目部署在一台腾讯云轻量应用服务器（Ubuntu）上，用的就是同一份
+`docker-compose.yml`。公网暴露面比本地开发收窄了很多：
+
+| 加固项 | 做法 | 为什么 |
+| --- | --- | --- |
+| Redis / MySQL 不暴露端口 | compose 里用 `expose`（仅容器网络可达），不写 `ports` | 无密码 Redis 是被扫描爆破的重灾区；数据库同理 |
+| 后端不直接对外 | `ports` 只绑 `127.0.0.1:8000`，外部流量一律经 frontend 的 nginx 反代 `/api` | 直连 8000 会绕过前端的体积限制与缓存层 |
+| 端口参数化 | `FRONTEND_PORT`（云上设 80，本地 8080） | 同一份编排，两边环境各取所需 |
+| 注册开关 | `REGISTER_ENABLED=0` | 注册消耗的是自己的 API 额度，公网敞开注册等于把账单交给陌生人 |
+
+依赖的密钥全部放服务器上的 `.env`（不入仓库、不进镜像）。
+
+### 方式三：本地开发
 
 ### 方式二：本地开发
 
@@ -72,6 +89,15 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
+
+用户表与审计日志默认使用本地 MySQL 8，先建库（`.env` 的 `DATABASE_URL` 指向它）：
+
+```sql
+CREATE DATABASE agent CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+表结构用迁移管理：`python -m alembic upgrade head`。
+未配置 `DATABASE_URL` 时回落 SQLite 文件——单元测试与迁移测试走的就是这条路，不依赖 MySQL。
 
 必填：`DEEPSEEK_API_KEY`、`TAVILY_API_KEY`、`JWT_SECRET`。生成 JWT 密钥：
 
@@ -585,9 +611,9 @@ python -m evals.compare evals/reports/baseline-v1.json evals/reports/final-v1.js
 
 判定分两层：**工具调用是否正确** + **最终答案是否正确**，规则匹配优先，语义类交给 LLM-as-judge。
 
-数据集 158 条（149 条可离线运行，9 条需联网检索），覆盖 10 个类别：数学直算、
-多步数学、多工具协作、多轮上下文、知识库问答、实时信息、时间查询、
-提示注入、凭据窃取与越权索取、边界输入。
+数据集 158 条（149 条可离线运行，9 条需联网检索），覆盖 10 个类别：数学直算(20)、
+多步数学(12)、多工具协作(11)、多轮上下文(15)、无需工具(15)、知识库问答(25)、
+实时信息(8)、时间查询(12)、提示注入(20)、边界输入(20)。
 
 ### 当前指标（全量 158 条 × 2 轮，2026-10-08，DeepSeek-V4-Flash）
 
@@ -606,9 +632,9 @@ python -m evals.compare evals/reports/baseline-v1.json evals/reports/final-v1.js
 > 语言）——强化 system prompt 安全红线后复测升至 98.4%、工具调用 100%。
 > **换模型就该重新过一遍评测集，短处会被精确指出来**，这正是评测体系存在的意义。
 
-延迟相比早期（143 条版本时期 P50 2.00s）上升到 6.49s，主要来自三段：
+延迟相比早期（143 条版本时期 P50 2.00s）上升到 6.07s，主要来自三段：
 混合推理模型 V4-Flash 的推理开销、知识库检索的 embedding 与精排调用、
-以及联网检索用例的长尾（P95 18.84s 多由 9 条 realtime 类用例拉高）。
+以及联网检索用例的长尾（P95 16.23s 多由 realtime 类用例拉高）。
 
 > 单轮数字会受采样波动影响，因此结论以多轮一致为准（`--repeat`）。
 > 本次两轮波动区间 98.1% ~ 98.7%，抖动用例 1 条（早期 53 条版本上曾观察到
@@ -751,10 +777,10 @@ alembic downgrade base   # 回滚
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q      # 268 条
+python -m pytest -q      # 275 项
 ```
 
-覆盖十四组纯函数，**不需要任何 API Key**，因此 CI 中可以完整运行：
+覆盖十八组纯函数，**不需要任何 API Key**，因此 CI 中可以完整运行：
 
 | 测试文件 | 覆盖内容 |
 | --- | --- |
@@ -776,6 +802,7 @@ python -m pytest -q      # 268 条
 | `tests/test_observability.py` | JSON 日志含 request_id、ID 格式校验防注入、路径 label 归一化 |
 | `tests/test_migrations.py` | Alembic 能从零建出完整 schema 且可回滚 |
 | `tests/test_resilience.py` | 熔断三态迁移、重试次数、确定性错误不重试 |
+| `tests/test_audit.py` | 审计旁路：写审计失败不影响业务、敏感信息不进 detail、登录失败留痕 |
 
 `test_calculate.py` 的分量最重：它锁死了"数学求值绝不使用 eval"这条底线。
 历史上这个项目确实用过 `eval`，等于把 shell 暴露给 HTTP 接口。
@@ -859,7 +886,7 @@ python -m evals.compare evals/reports/ci_baseline.json \
 ## 已知局限
 
 - `llm_judge` 判定本身带非确定性，抖动用例里有一部分是评分抖动而非能力抖动。
-- 限流目前只有**单用户**维度，未做按 IP 或全局配额，公网部署前需补充。
+- 限流目前只有**单用户**维度，未做按 IP 或全局配额；服务已公网部署，这是下一步要补的。
 - 并发上限是**进程内**计数，多副本部署时实际并发 = 上限 × 副本数，需要集中式限流时得再改。
 - 长上下文压缩采用"摘要"方案，会丢失细节；对必须逐字保留的场景（如法律条款）不适用。
 - 图片理解目前只挂在 **react** 架构上，graph 架构尚未接入视觉分支。
@@ -872,7 +899,8 @@ python -m evals.compare evals/reports/ci_baseline.json \
 - 语义缓存的收益**高度依赖流量重复度**：本项目 demo 场景重复提问很少，
   命中率天然不会高，这项功能真正的价值在于零误命中的安全底线与可量化的延迟降幅。
 - 上传目录与会话一样依赖本地单机存储，多副本部署需要换成对象存储。
-- `agent.db` 使用 SQLite，生产建议换 PostgreSQL。
+- 用户表与审计日志已迁移到 MySQL 8；上传文件、知识库、语义缓存仍是单机本地存储，
+  多副本部署还需要对象存储与集中式缓存（如 RediSearch）。
 - 知识库需要手动执行 `ingest`（现在可以在容器内执行了）。
 
 ## 后续路线

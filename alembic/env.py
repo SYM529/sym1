@@ -1,11 +1,17 @@
 """Alembic 环境配置。
 
-连接串从 DATABASE_URL 环境变量读取（默认 sqlite:///./agent.db），
+连接串从 DATABASE_URL 环境变量读取（本地开发 MySQL 8，未配置回落 sqlite:///./agent.db），
 与 server/database.py 保持一致，避免两处配置漂移。
 """
 
 from logging.config import fileConfig
 import os
+
+from dotenv import load_dotenv
+
+# alembic 是独立命令行入口，不经过应用启动流程，
+# 必须自己加载 .env 才能拿到 DATABASE_URL（load_dotenv 幂等，无副作用）
+load_dotenv()
 
 # 必须在导入 server.database **之前**关掉自动建表：
 # 否则 create_all 会先把表建好，紧接着的 alembic upgrade 再建一次就会冲突。

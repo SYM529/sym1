@@ -34,6 +34,8 @@ python-multipart>=0.0.9   # OAuth2PasswordRequestForm 解析 form-data 需要
 SQLAlchemy>=2.0
 redis>=5.0
 alembic>=1.13         # 数据库迁移（生产环境用 alembic upgrade head）
+pymysql>=1.1          # MySQL 驱动（DATABASE_URL 用 mysql+pymysql:// 时需要）
+cryptography>=42.0    # MySQL 8 默认认证插件 caching_sha2_password 需要
 
 # ---- 可观测性 ----
 prometheus-client>=0.20   # /metrics 指标暴露（缺失时指标能力自动降级）

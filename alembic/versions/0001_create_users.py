@@ -23,8 +23,9 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
-        sa.Column("username", sa.String(), nullable=False, index=True, unique=True),
-        sa.Column("hashed_password", sa.String(), nullable=False),
+        sa.Column("username", sa.String(64), nullable=False, index=True, unique=True),
+        # 长度必须显式：MySQL 的 VARCHAR 不给长度无法建表（SQLite 会忽略）
+        sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column(
             "is_admin", sa.Boolean(), nullable=False, server_default=sa.false()

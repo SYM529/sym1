@@ -10,11 +10,8 @@ docker compose up --build
 打开 `http://localhost:8080`。容器之间通过服务名互联，
 nginx 负责把 `/api` 反代到后端，并且关闭了缓冲以保证 SSE 流式输出正常。
 
-在 Windows 上挂载 SQLite 之前，需要先在宿主机创建一个空文件：
-
-```powershell
-New-Item agent.db -ItemType File
-```
+用户表与审计日志使用 compose 里的 MySQL 8 容器（数据卷 `mysql_data` 持久化），
+连接密码由 `.env` 的 `MYSQL_ROOT_PASSWORD` 提供，首次启动会自动建库建表。
 
 ## 必填的环境变量
 

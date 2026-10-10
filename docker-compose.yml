@@ -15,6 +15,30 @@ services:
       timeout: 3s
       retries: 10
 
+  mysql:
+    image: mysql:8.0
+    container_name: agent-mysql
+    restart: unless-stopped
+    # 公网部署时 MySQL 同样只走容器网络，不暴露宿主机端口
+    expose:
+      - "3306"
+    environment:
+      MYSQL_DATABASE: agent
+      # 密码从 .env 读取，绝不写进仓库
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    # 与本地建库保持一致的字符集，避免中文与 emoji 写入报错
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      # MySQL 首次初始化较慢，给足启动宽限
+      start_period: 30s
+
   backend:
     build: .
     container_name: agent-backend
@@ -26,8 +50,9 @@ services:
     env_file:
       - .env
     environment:
-      # 容器内通过服务名访问 Redis，覆盖 .env 里的 localhost
+      # 容器内通过服务名访问 Redis / MySQL，覆盖 .env 里的 localhost
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/agent?charset=utf8mb4
       # compose 暴露的前端端口是 8080
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
       # 容器默认 UTC，"现在几点"和埋点的"今日"分桶都需要本地时区
@@ -35,10 +60,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
     volumes:
-      # 用户表持久化，避免容器重建后账号丢失
-      - ./agent.db:/app/agent.db
-      # 上传文件与知识库也要持久化：否则容器重建之后，
+      # 上传文件与知识库要持久化：否则容器重建之后，
       # 上传的文件消失，文档问答会退化成"知识库里没有"
       - ./uploads:/app/uploads
       - ./rag_store:/app/rag_store
@@ -58,3 +83,4 @@ services:
 
 volumes:
   redis_data:
+  mysql_data:
