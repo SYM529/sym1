@@ -45,3 +45,8 @@ Thumbs.db
 cloudflared.exe
 cf_out.log
 cf_err.log
+tunnel.ps1
+
+# 一次性脚本与评测调试输出
+_*.txt
+_set_desc.ps1
