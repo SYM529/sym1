@@ -4,7 +4,9 @@ FROM python:3.12-slim
 
 # 系统依赖：gcc 用于编译部分 wheel；curl 用于健康检查；
 # tzdata 提供 /usr/share/zoneinfo，配合 TZ 让容器内时间与北京时间一致
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt 换阿里云源：国内构建从 90s+ 降到几秒（海外构建可删掉这行 sed）
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         curl \
         tzdata \
@@ -16,8 +18,9 @@ ENV TZ=Asia/Shanghai
 WORKDIR /app
 
 # 先只复制依赖清单，利用 Docker 构建缓存：requirements 不变时不重装依赖
+# pip 换清华源：国内构建依赖安装提速约 10 倍（海外构建可删掉 -i 参数）
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 COPY agent/ ./agent/
 COPY server/ ./server/
